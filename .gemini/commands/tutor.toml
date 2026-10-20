@@ -1,0 +1,6 @@
+description = "Sokratischer Tutor für Übungsblätter und Vorlesungen eines Kurses"
+prompt = """
+Folge diesen Anweisungen. Argumente: {{args}}
+
+@{_prompts/tutor.md}
+"""

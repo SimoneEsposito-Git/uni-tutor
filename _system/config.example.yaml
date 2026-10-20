@@ -1,0 +1,16 @@
+# Moodle / ISIS-Sync Konfiguration
+# Kopiere diese Datei nach _system/config.yaml und passe sie an.
+
+moodle_url: "https://isis.tu-berlin.de"   # URL deiner Moodle/ISIS-Instanz
+token_env: MOODLE_TOKEN                   # Optional (nur für sync.py über REST-API)
+ics_url_env: MOODLE_ICS_URL               # Optional (nur für sync.py)
+username: "dein_tubit_username"           # Dein Login-Name für isis_sync.py
+# master_dir: "/Pfad/zum/Master-Ordner"   # Optional: Standard ist automatisch das Projekt-Stammverzeichnis
+
+courses:
+  - id: 49346                             # Kurs-ID aus der URL: .../course/view.php?id=49346
+    name: "Database Technology"
+    semester: "Semester 1"
+  - id: 50013
+    name: "Deep Learning"
+    semester: "Semester 1"

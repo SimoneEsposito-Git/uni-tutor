@@ -1,0 +1,19 @@
+# macOS & Python
+.DS_Store
+__pycache__/
+*.py[cod]
+_system/.venv/
+
+# Persönliche Konfiguration & Laufzeitdaten (Sync)
+_system/config.yaml
+_system/com.master.sync.plist
+_system/session.json
+_system/state.json
+_system/isis_state.json
+_system/todoist_state.json
+_system/calendar.ics
+_system/sync.log
+
+# Persönliche Kursordner & Dokumente (werden lokal durch den Sync angelegt)
+Semester*/
+Dokumente/
