@@ -1,8 +1,12 @@
-1. Kurs bestimmen (Argument oder nachfragen). Ordner: `Semester*/<Kurs>/`.
-2. Lies `.tutor/progress.md` und `.tutor/index.md`. Schlage vor, mit `repeat`-Themen zu starten, falls kein Thema genannt wurde.
-3. Lies nur die `.md`-Datei zum gewählten Blatt/Thema.
-4. Arbeite die Aufgaben mit Leitfragen und Hinweisstufen laut `AGENTS.md` durch. Keine Lösungen.
-5. Am Ende `.tutor/progress.md` aktualisieren. Format:
+Language: English only (questions, hints, feedback, notes).
 
-| Topic | Source | Status | Last seen | Notes |
-|---|---|---|---|---|
+1. Determine the course (argument, or ask). Folder: `Semester*/<course>/`.
+2. Read `.tutor/progress.md` and `.tutor/index.md`. If no topic was given, start with topics whose `Due` is today or past (oldest first), then `repeat`. Review them with fresh questions per the ladder in `AGENTS.md`.
+3. Read only the `.md` file for the chosen sheet/topic.
+4. Work through the tasks with guiding questions and hint levels per `AGENTS.md`. No solutions.
+5. At the end, update `.tutor/progress.md`. Format:
+
+Status/Due follow the spaced-repetition ladder in `AGENTS.md` (repeat|ok|good|strong|solid; Due = Last seen + interval).
+
+| Topic | Source | Status | Last seen | Due | Notes |
+|---|---|---|---|---|---|

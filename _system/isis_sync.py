@@ -84,7 +84,7 @@ def sync_course(page, ctx, c):
         (course_dir / d).mkdir(parents=True, exist_ok=True)
     prog = course_dir / ".tutor" / "progress.md"
     if not prog.exists():
-        prog.write_text("| Topic | Source | Status | Last seen | Notes |\n|---|---|---|---|---|\n")
+        prog.write_text("| Topic | Source | Status | Last seen | Due | Notes |\n|---|---|---|---|---|---|\n")
 
     page.goto(f"{BASE}/course/view.php?id={c['id']}", wait_until="domcontentloaded")
     items = page.eval_on_selector_all(
@@ -104,6 +104,12 @@ def sync_course(page, ctx, c):
             else:
                 fetch(ctx, href, course_dir, it["section"], label, new)
     print(f"{c['name']}: {len(new)} new/changed {new}")
+    return new
+
+
+def notify(msg: str):
+    msg = msg.replace("\\", "\\\\").replace('"', '\\"')
+    subprocess.run(["osascript", "-e", f'display notification "{msg}" with title "Uni sync"'])
 
 
 def main():
@@ -117,10 +123,14 @@ def main():
             ctx.storage_state(path=str(SESSION))
             SESSION.chmod(0o600)
         if not interactive:
+            added = {}
             for c in CFG["courses"] or []:
-                sync_course(page, ctx, c)
+                if new := sync_course(page, ctx, c):
+                    added[c["name"]] = new
         browser.close()
     STATE_F.write_text(json.dumps(STATE, indent=1))
+    if not interactive and added:
+        notify("; ".join(f"{k}: {', '.join(v[:3])}" + (f" +{len(v) - 3}" if len(v) > 3 else "") for k, v in added.items()))
     if not interactive:
         has_todoist = subprocess.run(
             ["security", "find-generic-password", "-s", "todoist-sync", "-w"],

@@ -1,4 +1,6 @@
-1. Falls `.tutor/style_guide.md` fehlt: alle Blätter in `exercises/` (bzw. deren `.md`) analysieren und dort festhalten: Struktur, Formulierungen, Punkteverteilung, Notation, typische Schwierigkeit. Einmalig.
-2. Lies nur `style_guide.md` und die `.md` der betroffenen Vorlesung.
-3. Schreibe Aufgaben nach `generated/<datum>_<thema>_<stufe>.md`, Lösungen getrennt in `generated/<datum>_<thema>_<stufe>_solutions.md`. Lösungen nicht im Chat zeigen.
-4. Bei Stufe `exam` Bearbeitungszeit und Punkte angeben.
+Language: English only.
+
+1. If `.tutor/style_guide.md` is missing: analyze all sheets in `exercises/` (or their `.md`) and record: structure, phrasing, point distribution, notation, typical difficulty. One-time.
+2. Read only `style_guide.md` and the `.md` of the relevant lecture.
+3. Write tasks to `generated/<date>_<topic>_<level>.md`, solutions separately to `generated/<date>_<topic>_<level>_solutions.md`. Do not show solutions in chat.
+4. For level `exam`, state working time and points.

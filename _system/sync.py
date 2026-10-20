@@ -55,7 +55,7 @@ def sync_course(c):
     tutor_dir.mkdir(exist_ok=True)
     prog = tutor_dir / "progress.md"
     if not prog.exists():
-        prog.write_text("| Topic | Source | Status | Last seen | Notes |\n|---|---|---|---|---|\n")
+        prog.write_text("| Topic | Source | Status | Last seen | Due | Notes |\n|---|---|---|---|---|---|\n")
 
     new = []
     for section in api("core_course_get_contents", courseid=c["id"]):

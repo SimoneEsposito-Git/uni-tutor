@@ -1,6 +1,6 @@
 ---
 name: make-exercises
-description: Erzeugt neue Übungsaufgaben im Stil der Original-Übungsblätter eines Kurses, in wählbarer Schwierigkeit (easy/medium/exam). Nutzen bei "/make-exercises <Kurs> <Thema> <Stufe>".
+description: Generates new exercises in the style of a course's original sheets, at selectable difficulty (easy/medium/exam). Use on "/make-exercises <course> <topic> <level>". English only.
 ---
 
-Folge den Anweisungen in `_prompts/make-exercises.md` (Master-Ordner). Argumente des Nutzers: Kurs, ggf. Thema/Stufe.
+Follow the instructions in `_prompts/make-exercises.md` (Master folder). User arguments: course, optionally topic/level.

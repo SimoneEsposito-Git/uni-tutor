@@ -1,6 +1,6 @@
 ---
 name: tutor
-description: Sokratischer Tutor für Übungsblätter und Vorlesungen eines Kurses. Nutzen bei "/tutor <Kurs>" oder wenn Aufgaben/Vorlesungen durchgegangen werden sollen. Verrät keine Lösungen.
+description: Socratic tutor for a course's exercise sheets and lectures. Use on "/tutor <course>" or when going through tasks/lectures. Never reveals solutions. English only.
 ---
 
-Folge den Anweisungen in `_prompts/tutor.md` (Master-Ordner). Argumente des Nutzers: Kurs, ggf. Thema/Stufe.
+Follow the instructions in `_prompts/tutor.md` (Master folder). User arguments: course, optionally topic/level.

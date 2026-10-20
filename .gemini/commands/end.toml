@@ -1,0 +1,6 @@
+description = "Beendet die Tutor-Sitzung und speichert den Fortschritt"
+prompt = """
+Folge diesen Anweisungen.
+
+@{_prompts/end.md}
+"""
