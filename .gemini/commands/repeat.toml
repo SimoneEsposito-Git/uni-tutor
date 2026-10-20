@@ -1,0 +1,6 @@
+description = "Wiederholung aller fälligen Themen (Spaced Repetition) über alle Kurse"
+prompt = """
+Folge diesen Anweisungen. Argumente: {{args}}
+
+@{_prompts/repeat.md}
+"""
