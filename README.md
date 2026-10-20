@@ -2,7 +2,7 @@
 
 Dieses Projekt verwandelt deinen Studienordner in ein automatisiertes Lernsystem:
 1. **Automatischer Kurs-Sync (`_system/`)**: Lädt täglich neue Vorlesungsfolien, Übungsblätter und Infos aus Moodle/ISIS herunter, sortiert sie automatisch in die richtige Ordnerstruktur, schützt Originaldateien vor versehentlichem Überschreiben (`chmod 444`) und wandelt PDFs direkt in kompakte Markdown-Dateien (`.tutor/md/`) um, damit KI-Modelle sie extrem token-sparend lesen können. Optional werden Abgabefristen direkt nach **Todoist** synchronisiert.
-2. **Sokratischer KI-Tutor & Aufgabengenerator**: Vorkonfigurierte Regeln ([AGENTS.md](file:///AGENTS.md)) und Slash-Befehle (`/tutor`, `/make-exercises`) für **Google Antigravity**, **Claude Code** und **Gemini CLI**. Der Tutor verrät niemals direkt die Lösung, sondern führt dich mit gestuften Hinweisen und exakten Folien-Zitaten durch die Aufgaben und merkt sich deinen Lernstand in `.tutor/progress.md`.
+2. **Sokratischer KI-Tutor & Aufgabengenerator**: Vorkonfigurierte Regeln ([AGENTS.md](file:///AGENTS.md)) und Slash-Befehle (`/tutor`, `/repeat`, `/anki`, `/make-exercises`) für **Google Antigravity**, **Claude Code** und **Gemini CLI**. Der Tutor verrät niemals direkt die Lösung, sondern führt dich mit gestuften Hinweisen und exakten Folien-Zitaten durch die Aufgaben und merkt sich deinen Lernstand in `.tutor/progress.md`.
 
 ---
 
@@ -16,10 +16,12 @@ Master/
 ├── setup.sh                  # Einmaliges Setup-Skript (Python-Umgebung, Playwright, Config)
 ├── _prompts/                 # Gemeinsame Prompt-Vorlagen für die Slash-Befehle
 │   ├── tutor.md              # Ablauf für /tutor
+│   ├── anki.md               # Ablauf für /anki (Anki-Deck aus Vorlesung/Kapitel)
+│   ├── repeat.md             # Ablauf für /repeat (fällige Wiederholungen, kursübergreifend)
 │   └── make-exercises.md     # Ablauf für /make-exercises
-├── .agents/skills/           # Skills für Google Antigravity (/tutor, /make-exercises)
-├── .claude/skills/           # Skills für Claude Code (/tutor, /make-exercises)
-├── .gemini/commands/         # Custom Commands für Gemini CLI (/tutor, /make-exercises)
+├── .agents/skills/           # Skills für Google Antigravity (/tutor, /repeat, /anki, /make-exercises)
+├── .claude/skills/           # Skills für Claude Code (/tutor, /repeat, /anki, /make-exercises)
+├── .gemini/commands/         # Custom Commands für Gemini CLI (/tutor, /repeat, /anki, /make-exercises)
 ├── _system/                  # Synchronisations-Skripte
 │   ├── config.example.yaml   # Vorlage für deine Kurs-Konfiguration
 │   ├── isis_sync.py          # Browser-Sync via Playwright (Shibboleth / TU-Login)
@@ -36,7 +38,7 @@ Master/
         └── .tutor/           # Arbeitsverzeichnis der KI
             ├── md/           # Automatisch aus PDFs extrahierter Text (.md)
             ├── index.md      # Kurzindex (1 Zeile pro Vorlesung/Blatt, falls angelegt)
-            ├── progress.md   # Dein Lernfortschritt (solid | ok | repeat)
+            ├── progress.md   # Dein Lernfortschritt (repeat → ok → good → strong → solid, Spaced Repetition)
             └── style_guide.md# Automatisch analysierter Stil der Übungsblätter
 ```
 
@@ -192,7 +194,7 @@ Starte eine Lernsitzung für einen Kurs oder ein konkretes Übungsblatt:
   Schreibe einfach `Starte den Tutor für Database Technology` (oder nutze den `tutor`-Skill).
 
 **Wie der Tutor arbeitet:**
-- Er prüft zuerst `.tutor/progress.md` und schlägt Themen mit Status `repeat` oder dem ältesten Datum vor.
+- Er prüft zuerst `.tutor/progress.md` und schlägt Themen mit fälligem `Due`-Datum bzw. Status `repeat` vor.
 - Er stellt dir **immer nur eine Leitfrage** pro Antwort und verrät nie die fertige Lösung.
 - **Hinweisstufen**:
   1. Leitfrage zum Nachdenken
