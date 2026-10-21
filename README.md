@@ -2,7 +2,7 @@
 
 Dieses Projekt verwandelt deinen Studienordner in ein automatisiertes Lernsystem:
 1. **Automatischer Kurs-Sync (`_system/`)**: Lädt täglich neue Vorlesungsfolien, Übungsblätter und Infos aus Moodle/ISIS herunter, sortiert sie automatisch in die richtige Ordnerstruktur, schützt Originaldateien vor versehentlichem Überschreiben (`chmod 444`) und wandelt PDFs direkt in kompakte Markdown-Dateien (`.tutor/md/`) um, damit KI-Modelle sie extrem token-sparend lesen können. Optional werden Abgabefristen direkt nach **Todoist** synchronisiert.
-2. **Sokratischer KI-Tutor & Aufgabengenerator**: Vorkonfigurierte Regeln ([AGENTS.md](file:///AGENTS.md)) und Slash-Befehle (`/tutor`, `/repeat`, `/anki`, `/make-exercises`) für **Google Antigravity**, **Claude Code** und **Gemini CLI**. Der Tutor verrät niemals direkt die Lösung, sondern führt dich mit gestuften Hinweisen und exakten Folien-Zitaten durch die Aufgaben und merkt sich deinen Lernstand in `.tutor/progress.md`.
+2. **Sokratischer KI-Tutor & Aufgabengenerator**: Vorkonfigurierte Regeln ([AGENTS.md](file:///AGENTS.md)) und Slash-Befehle (`/tutor`, `/repeat`, `/anki`, `/make-exercises`, `/sync`) für **Google Antigravity**, **Claude Code** und **Gemini CLI**. Der Tutor verrät niemals direkt die Lösung, sondern führt dich mit gestuften Hinweisen und exakten Folien-Zitaten durch die Aufgaben und merkt sich deinen Lernstand in `.tutor/progress.md`.
 
 ---
 
@@ -18,10 +18,11 @@ Master/
 │   ├── tutor.md              # Ablauf für /tutor
 │   ├── anki.md               # Ablauf für /anki (Anki-Deck aus Vorlesung/Kapitel)
 │   ├── repeat.md             # Ablauf für /repeat (fällige Wiederholungen, kursübergreifend)
-│   └── make-exercises.md     # Ablauf für /make-exercises
-├── .agents/skills/           # Skills für Google Antigravity (/tutor, /repeat, /anki, /make-exercises)
-├── .claude/skills/           # Skills für Claude Code (/tutor, /repeat, /anki, /make-exercises)
-├── .gemini/commands/         # Custom Commands für Gemini CLI (/tutor, /repeat, /anki, /make-exercises)
+│   ├── make-exercises.md     # Ablauf für /make-exercises
+│   └── sync.md               # Ablauf für /sync (manueller Sync + Änderungs-Zusammenfassung)
+├── .agents/skills/           # Skills für Google Antigravity (/tutor, /repeat, /anki, /make-exercises, /sync)
+├── .claude/skills/           # Skills für Claude Code (/tutor, /repeat, /anki, /make-exercises, /sync)
+├── .gemini/commands/         # Custom Commands für Gemini CLI (/tutor, /repeat, /anki, /make-exercises, /sync)
 ├── _system/                  # Synchronisations-Skripte
 │   ├── config.example.yaml   # Vorlage für deine Kurs-Konfiguration
 │   ├── isis_sync.py          # Browser-Sync via Playwright (Shibboleth / TU-Login)

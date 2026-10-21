@@ -1,0 +1,6 @@
+description = "Kursmaterial manuell aus ISIS/Moodle synchronisieren und Änderungen zusammenfassen"
+prompt = """
+Folge diesen Anweisungen.
+
+@{_prompts/sync.md}
+"""
