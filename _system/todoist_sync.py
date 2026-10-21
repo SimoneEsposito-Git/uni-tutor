@@ -1,45 +1,39 @@
 #!/usr/bin/env python3
 """Push upcoming Moodle calendar deadlines (calendar.ics) to Todoist, once per event.
 
-Secrets live in the macOS keychain, never in files:
-  security add-generic-password -a "$USER" -s todoist-sync -w   # Todoist API token
-  security add-generic-password -a "$USER" -s isis-ics -w       # Moodle calendar export URL
+Secrets live in the OS credential store, never in files:
+  python keystore.py set todoist   # Todoist API token
+  python keystore.py set ics       # Moodle calendar export URL
 """
-import json, re, subprocess, sys
+import json, re, sys
 from datetime import date, datetime, timezone
 
 import requests
 from icalendar import Calendar
 
-from sync import CFG, HERE
+import keystore
+from sync import HERE
 
 API = "https://api.todoist.com/api/v1"
 STATE_F = HERE / "todoist_state.json"
-STATE = json.loads(STATE_F.read_text()) if STATE_F.exists() else {}
-
-
-def keychain(service: str) -> str:
-    r = subprocess.run(["security", "find-generic-password", "-s", service, "-w"], capture_output=True, text=True)
-    if r.returncode:
-        sys.exit(f"No keychain entry '{service}'.")
-    return r.stdout.strip()
+STATE = json.loads(STATE_F.read_text(encoding="utf-8")) if STATE_F.exists() else {}
 
 
 def ics_url() -> str:
-    url = keychain("isis-ics")
+    url = keystore.require("ics")
     if "preset_time" not in url:
         url += "&preset_what=all&preset_time=recentupcoming"  # default range is only the current week
     return url
 
 
 def fetch_ics(ics: bytes | None = None) -> Calendar:
-    """ISIS now redirects the export to SSO login, so isis_sync passes the body fetched with its session."""
+    """Some sites (e.g. ISIS) send the export to SSO login, so moodle_sync passes the body fetched with its session."""
     if ics is None:
         r = requests.get(ics_url(), timeout=60)
         r.raise_for_status()
         ics = r.content
     if not ics.lstrip().startswith(b"BEGIN:VCALENDAR"):
-        sys.exit("Todoist: calendar export returned a login page, not a calendar (run via isis_sync.py).")
+        sys.exit("Todoist: calendar export returned a login page, not a calendar (run via moodle_sync.py).")
     (HERE / "calendar.ics").write_bytes(ics)
     return Calendar.from_ical(ics)
 
@@ -61,7 +55,7 @@ def task_fields(ev) -> dict:
 
 
 def main(ics: bytes | None = None):
-    h = {"Authorization": f"Bearer {keychain('todoist-sync')}"}
+    h = {"Authorization": f"Bearer {keystore.require('todoist')}"}
     now = datetime.now(timezone.utc)
     added = 0
     cal = fetch_ics(ics)
@@ -90,7 +84,7 @@ def main(ics: bytes | None = None):
         r.raise_for_status()
         STATE[uid] = r.json()["id"]
         added += 1
-    STATE_F.write_text(json.dumps(STATE, indent=1))
+    STATE_F.write_text(json.dumps(STATE, indent=1), encoding="utf-8")
     print(f"Todoist: {added} new tasks")
 
 

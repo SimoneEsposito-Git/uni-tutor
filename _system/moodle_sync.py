@@ -1,34 +1,33 @@
 #!/usr/bin/env python3
-"""Daily ISIS sync via browser session (no Moodle token needed).
+"""Daily Moodle sync via browser session (no Moodle token needed). Works with plain Moodle logins and SSO.
 
-Password comes from the macOS login keychain (entry "isis-sync"), never from a file:
-  security add-generic-password -a "<user>" -s isis-sync -w
+The password comes from the OS credential store, never from a file (python keystore.py set password).
 Session cookies are cached in session.json; a fresh login only happens when they expire.
-  python3 isis_sync.py --login   # visible browser, for the first run or if login fails headless
-  python3 isis_sync.py           # daily run (headless)
+  python moodle_sync.py --login   # visible browser, for the first run or if login fails headless
+  python moodle_sync.py           # daily run (headless)
 """
-import hashlib, json, re, subprocess, sys
+import hashlib, json, re, shutil, subprocess, sys
 from pathlib import Path
 from urllib.parse import unquote, urljoin
 
 import requests
 from playwright.sync_api import sync_playwright
 
-from sync import CFG, MASTER, HERE, target_dir, to_markdown
+import keystore
+from sync import CFG, ROOT, HERE, target_dir, to_markdown
 
 BASE = CFG["moodle_url"].rstrip("/")
+LOGIN = CFG.get("login") or {}
 SESSION = HERE / "session.json"
-STATE_F = HERE / "isis_state.json"
-STATE = json.loads(STATE_F.read_text()) if STATE_F.exists() else {}
+STATE_F = HERE / "moodle_state.json"
+if not STATE_F.exists() and (HERE / "isis_state.json").exists():  # pre-rename name
+    (HERE / "isis_state.json").rename(STATE_F)
+STATE = json.loads(STATE_F.read_text(encoding="utf-8")) if STATE_F.exists() else {}
 USER = CFG.get("username", "")
 
 
-def password() -> str:
-    r = subprocess.run(["security", "find-generic-password", "-s", "isis-sync", "-w"],
-                       capture_output=True, text=True)
-    if r.returncode:
-        sys.exit("No keychain entry 'isis-sync'. Run: security add-generic-password -a \"$USER\" -s isis-sync -w")
-    return r.stdout.strip()
+def safe_name(name: str) -> str:
+    return re.sub(r'[\\/:*?"<>|\x00-\x1f]', "_", name).strip().rstrip(".")  # also valid on Windows
 
 
 def logged_in(page) -> bool:
@@ -36,29 +35,50 @@ def logged_in(page) -> bool:
     return page.url.startswith(BASE) and page.locator("input[type=password]").count() == 0
 
 
-def login(page, interactive: bool):
-    page.goto(f"{BASE}/login/index.php", wait_until="load")
-    shib = re.compile(r"shibboleth\.tubit\.tu-berlin\.de")
-    if not shib.search(page.url):  # ISIS sometimes redirects straight to Shibboleth
-        # cookie/terms banner ("Fortsetzen"), then the "TU-Login" button leading to Shibboleth
+def leave_login_page(page):
+    """On Moodle's login page: accept the consent banner, then follow the SSO button if configured."""
+    if LOGIN.get("consent_button"):  # cookie/terms banner
         try:
-            page.get_by_text("Fortsetzen", exact=True).locator("visible=true").first.click(timeout=3000)
+            page.get_by_text(LOGIN["consent_button"], exact=True).locator("visible=true").first.click(timeout=3000)
         except Exception:
             pass  # banner not shown or already accepted
-        page.get_by_role("link", name="TU-Login").or_(page.get_by_role("button", name="TU-Login")).first.click(timeout=15_000, force=True)
-        page.wait_for_url(shib, timeout=30_000)
-    page.fill("input[type=text]", USER)
-    page.fill("input[type=password]", password())
+    if LOGIN.get("sso_button"):  # button on the Moodle login page leading to the university SSO
+        name = LOGIN["sso_button"]
+        page.get_by_role("link", name=name).or_(page.get_by_role("button", name=name)).first.click(timeout=15_000, force=True)
+
+
+def login(page, interactive: bool):
+    on_moodle_page = lambda u: u.startswith(BASE) and "/login/" not in u
+    page.goto(f"{BASE}/login/index.php", wait_until="load")
+    if page.url.startswith(BASE):  # some sites redirect straight to the identity provider
+        leave_login_page(page)
+        if LOGIN.get("sso_button"):
+            page.wait_for_url(lambda u: not u.startswith(BASE), timeout=30_000)
+    # works for Moodle's own form and typical SSO forms: first visible text/email field + password field.
+    # Wait for it first: identity providers often pass through interstitial redirect pages.
+    pw = page.locator("input[type=password]:visible").first
+    pw.wait_for(timeout=30_000)
+    page.locator("input[type=text]:visible, input[type=email]:visible, input:not([type]):visible").first.fill(USER)
+    pw.fill(keystore.require("password"))
     page.keyboard.press("Enter")
     if interactive:
         print("Credentials entered; if the login doesn't finish, complete it in the window (5 min)...")
-    page.wait_for_url(re.compile("^" + re.escape(BASE)), timeout=300_000 if interactive else 60_000)
+    timeout = 300_000 if interactive else 60_000
+    page.wait_for_url(re.compile("^" + re.escape(BASE)), timeout=timeout)
+    if not on_moodle_page(page.url):
+        # Back on the login page: with SSO, Moodle may first want its consent banner accepted;
+        # the identity provider session now exists, so the second SSO round trip needs no password.
+        if not LOGIN.get("sso_button") and not interactive:
+            sys.exit("Login failed: still on the Moodle login page (wrong username or password?).")
+        page.wait_for_load_state("load")
+        leave_login_page(page)
+        page.wait_for_url(on_moodle_page, timeout=timeout)
 
 
 def filename_of(resp, url: str) -> str:
     cd = resp.headers.get("content-disposition", "")
     m = re.search(r"filename\*?=(?:UTF-8'')?\"?([^\";]+)", cd)
-    return unquote(m.group(1)) if m else unquote(url.split("?")[0].rsplit("/", 1)[-1])
+    return safe_name(unquote(m.group(1)) if m else unquote(url.split("?")[0].rsplit("/", 1)[-1]))
 
 
 def fetch(ctx, url: str, course_dir: Path, section: str, label: str, new: list):
@@ -84,16 +104,16 @@ def fetch(ctx, url: str, course_dir: Path, section: str, label: str, new: list):
 
 
 def ipynb_to_markdown(nb: Path, tutor_dir: Path):
-    cells = json.loads(nb.read_text())["cells"]
+    cells = json.loads(nb.read_text(encoding="utf-8"))["cells"]
     out = tutor_dir / "md" / (nb.stem + ".md")
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text("\n\n".join(
         "".join(c["source"]) if c["cell_type"] != "code" else "```python\n" + "".join(c["source"]) + "\n```"
-        for c in cells))
+        for c in cells), encoding="utf-8")
 
 
 def fetch_videos(page, ctx, cmid: str, course_dir: Path, section: str, label: str, new: list):
-    """All videos of a videoservice collection. Their URLs are content hashes, so a known URL is unchanged."""
+    """All videos of a videoservice collection (Moodle plugin used e.g. by TU Berlin's ISIS). Their URLs are content hashes, so a known URL is unchanged."""
     resp = ctx.request.post(
         f"{BASE}/lib/ajax/service.php?sesskey={page.evaluate('M.cfg.sesskey')}&info=mod_videoservice_get_videos",
         data=json.dumps([{"index": 0, "methodname": "mod_videoservice_get_videos",
@@ -108,7 +128,7 @@ def fetch_videos(page, ctx, cmid: str, course_dir: Path, section: str, label: st
         if v["url"] in STATE:
             continue
         # recordings are lectures, whatever the collection is called
-        dest = course_dir / "lectures" / (re.sub(r'[\\/:*?"<>|]', "_", v["title"]).strip() + v["fileext"])
+        dest = course_dir / "lectures" / safe_name(v["title"] + v["fileext"])
         dest.parent.mkdir(parents=True, exist_ok=True)
         part = dest.with_name(dest.name + ".part")
         with requests.get(v["url"], cookies=cookies, stream=True, timeout=120) as r:  # streamed: files are large
@@ -173,12 +193,12 @@ def follow_url(page, ctx, href: str, course_dir: Path, section: str, label: str,
 
 
 def sync_course(page, ctx, c):
-    course_dir = MASTER / c["semester"] / c["name"]
+    course_dir = ROOT / c["semester"] / c["name"]
     for d in ("lectures", "exercises", "info", "solutions", "generated", ".tutor"):
         (course_dir / d).mkdir(parents=True, exist_ok=True)
     prog = course_dir / ".tutor" / "progress.md"
     if not prog.exists():
-        prog.write_text("| Topic | Source | Status | Last seen | Due | Notes |\n|---|---|---|---|---|---|\n")
+        prog.write_text("| Topic | Source | Status | Last seen | Due | Notes |\n|---|---|---|---|---|---|\n", encoding="utf-8")
 
     page.goto(f"{BASE}/course/view.php?id={c['id']}", wait_until="domcontentloaded")
     items = page.eval_on_selector_all(
@@ -210,8 +230,22 @@ def sync_course(page, ctx, c):
 
 
 def notify(msg: str):
-    msg = msg.replace("\\", "\\\\").replace('"', '\\"')
-    subprocess.run(["osascript", "-e", f'display notification "{msg}" with title "Uni sync"'])
+    """Desktop notification; silently skipped where no notifier is available."""
+    if sys.platform == "darwin":
+        msg = msg.replace("\\", "\\\\").replace('"', '\\"')
+        subprocess.run(["osascript", "-e", f'display notification "{msg}" with title "Uni sync"'])
+    elif sys.platform == "win32":
+        msg = msg.replace("'", "''")
+        ps = ("[Windows.UI.Notifications.ToastNotificationManager,Windows.UI.Notifications,ContentType=WindowsRuntime]>$null;"
+              "$t=[Windows.UI.Notifications.ToastNotificationManager]::GetTemplateContent(1);"  # ToastText02
+              "$x=$t.GetElementsByTagName('text');$x[0].InnerText='Uni sync';"
+              f"$x[1].InnerText='{msg}';"
+              "[Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier("
+              "'{1AC14E77-02E7-4E5D-B744-2EB1AE5198B7}\\WindowsPowerShell\\v1.0\\powershell.exe')"
+              ".Show([Windows.UI.Notifications.ToastNotification]::new($t))")
+        subprocess.run(["powershell", "-NoProfile", "-Command", ps], capture_output=True)
+    elif shutil.which("notify-send"):
+        subprocess.run(["notify-send", "Uni sync", msg])
 
 
 def main():
@@ -224,10 +258,7 @@ def main():
             login(page, interactive)
             ctx.storage_state(path=str(SESSION))
             SESSION.chmod(0o600)
-        has_todoist = subprocess.run(
-            ["security", "find-generic-password", "-s", "todoist-sync", "-w"],
-            capture_output=True
-        ).returncode == 0
+        has_todoist = keystore.get("todoist") is not None
         ics = None
         if not interactive:
             added = {}
@@ -236,9 +267,9 @@ def main():
                     added[c["name"]] = new
             if has_todoist:
                 import todoist_sync
-                ics = ctx.request.get(todoist_sync.ics_url()).body()  # needs the ISIS session
+                ics = ctx.request.get(todoist_sync.ics_url()).body()  # some sites need the Moodle session
         browser.close()
-    STATE_F.write_text(json.dumps(STATE, indent=1))
+    STATE_F.write_text(json.dumps(STATE, indent=1), encoding="utf-8")
     if not interactive and added:
         notify("; ".join(f"{k}: {', '.join(v[:3])}" + (f" +{len(v) - 3}" if len(v) > 3 else "") for k, v in added.items()))
     if ics is not None:

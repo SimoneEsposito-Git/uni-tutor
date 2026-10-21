@@ -1,16 +1,31 @@
-# Moodle / ISIS-Sync Konfiguration
+# Moodle-Sync Konfiguration
 # Kopiere diese Datei nach _system/config.yaml und passe sie an.
 
-moodle_url: "https://isis.tu-berlin.de"   # URL deiner Moodle/ISIS-Instanz
-token_env: MOODLE_TOKEN                   # Optional (nur für sync.py über REST-API)
-ics_url_env: MOODLE_ICS_URL               # Optional (nur für sync.py)
-username: "dein_tubit_username"           # Dein Login-Name für isis_sync.py
-# master_dir: "/Pfad/zum/Master-Ordner"   # Optional: Standard ist automatisch das Projekt-Stammverzeichnis
+moodle_url: "https://moodle.example-uni.de"   # URL deiner Moodle-Instanz
+username: "dein_login_name"                   # Login-Name für moodle_sync.py
+# root_dir: "/Pfad/zum/Projektordner"         # Optional: Standard ist das Projekt-Stammverzeichnis
+
+# Login: ohne diesen Block wird das normale Moodle-Login-Formular ausgefüllt.
+# Bei Uni-SSO (Shibboleth o. Ä.) den Button-Text von der Moodle-Login-Seite eintragen.
+login:
+  # sso_button: "Uni-Login"                   # Link/Button zur SSO-Anmeldung (z. B. "TU-Login" bei ISIS)
+  # consent_button: "Fortsetzen"              # Cookie-/Nutzungsbedingungen-Banner, falls vorhanden
+
+# Namen der Einträge im Passwort-Speicher (macOS-Schlüsselbund / Windows-Anmeldeinformationsverwaltung).
+# Setzen mit: python _system/keystore.py set password|ics|todoist
+secrets:
+  password: moodle-password                   # Moodle-/SSO-Passwort (Pflicht)
+  ics: moodle-ics                             # Kalender-Export-URL (optional, für Todoist)
+  todoist: todoist-token                      # Todoist API-Token (optional)
+
+# Optional, nur für die REST-Variante sync.py
+token_env: MOODLE_TOKEN
+ics_url_env: MOODLE_ICS_URL
 
 courses:
-  - id: 49346                             # Kurs-ID aus der URL: .../course/view.php?id=49346
-    name: "Database Technology"
-    semester: "Semester 1"
-  - id: 50013
+  - id: 12345                                 # Kurs-ID aus der URL: .../course/view.php?id=12345
+    name: "Database Technology"               # Ordnername des Kurses
+    semester: "Semester 1"                    # Übergeordneter Ordner (beliebiger Name, z. B. "WiSe 26-27")
+  - id: 12346
     name: "Deep Learning"
     semester: "Semester 1"

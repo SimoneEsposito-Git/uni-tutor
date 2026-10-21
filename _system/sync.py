@@ -9,13 +9,15 @@ from pathlib import Path
 import requests, yaml
 
 HERE = Path(__file__).parent
+if sys.platform == "win32":  # console/log default to a legacy code page there
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 CFG_F = HERE / "config.yaml"
 if not CFG_F.exists():
     sys.exit("Missing _system/config.yaml. Copy _system/config.example.yaml to _system/config.yaml first.")
-CFG = yaml.safe_load(CFG_F.read_text())
-MASTER = Path(CFG.get("master_dir") or HERE.parent).expanduser().resolve()
+CFG = yaml.safe_load(CFG_F.read_text(encoding="utf-8"))
+ROOT = Path(CFG.get("root_dir") or CFG.get("master_dir") or HERE.parent).expanduser().resolve()
 STATE_F = HERE / "state.json"
-STATE = json.loads(STATE_F.read_text()) if STATE_F.exists() else {}
+STATE = json.loads(STATE_F.read_text(encoding="utf-8")) if STATE_F.exists() else {}
 TOKEN = os.environ.get(CFG["token_env"], "")
 BASE = CFG["moodle_url"].rstrip("/")
 
@@ -44,18 +46,18 @@ def to_markdown(pdf: Path, tutor_dir: Path):
     out = tutor_dir / "md" / (pdf.stem + ".md")
     out.parent.mkdir(parents=True, exist_ok=True)
     with fitz.open(pdf) as doc:
-        out.write_text("\n\n".join(f"<!-- page {i+1} -->\n{p.get_text()}" for i, p in enumerate(doc)))
+        out.write_text("\n\n".join(f"<!-- page {i+1} -->\n{p.get_text()}" for i, p in enumerate(doc)), encoding="utf-8")
 
 
 def sync_course(c):
-    course_dir = MASTER / c["semester"] / c["name"]
+    course_dir = ROOT / c["semester"] / c["name"]
     tutor_dir = course_dir / ".tutor"
     for d in ("lectures", "exercises", "info", "solutions", "generated"):
         (course_dir / d).mkdir(parents=True, exist_ok=True)
     tutor_dir.mkdir(exist_ok=True)
     prog = tutor_dir / "progress.md"
     if not prog.exists():
-        prog.write_text("| Topic | Source | Status | Last seen | Due | Notes |\n|---|---|---|---|---|---|\n")
+        prog.write_text("| Topic | Source | Status | Last seen | Due | Notes |\n|---|---|---|---|---|---|\n", encoding="utf-8")
 
     new = []
     for section in api("core_course_get_contents", courseid=c["id"]):
@@ -94,4 +96,4 @@ if __name__ == "__main__":
     for c in CFG["courses"] or []:
         sync_course(c)
     sync_ics()
-    STATE_F.write_text(json.dumps(STATE, indent=1))
+    STATE_F.write_text(json.dumps(STATE, indent=1), encoding="utf-8")
