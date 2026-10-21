@@ -6,6 +6,29 @@ Dieses Projekt verwandelt deinen Studienordner in ein automatisiertes Lernsystem
 
 ---
 
+## Easy Setup (empfohlen)
+
+Du musst die Abschnitte weiter unten nicht lesen. Es genügen drei Schritte, den Rest erledigt `/setup`:
+
+1. **Git installieren** (zum Klonen) und das Repository klonen:
+   ```bash
+   git clone https://github.com/SimoneEsposito-Git/uni-tutor.git
+   ```
+   *(Git fehlt noch? macOS: `xcode-select --install`, Windows: `winget install Git.Git`, Linux: `sudo apt install git`.)*
+2. **Ein KI-Tool installieren und den Ordner `uni-tutor` darin öffnen** (eines reicht, Details in [Abschnitt 3](#3-ki-tools-installieren-claude-code-antigravity-codex)):
+   - **Claude Code**: Desktop-App von [claude.ai/download](https://claude.ai/download) → Tab *Code* → Ordner öffnen. Oder CLI: `npm install -g @anthropic-ai/claude-code`, dann `cd uni-tutor && claude`.
+   - **Google Antigravity**: [antigravity.google/download](https://antigravity.google/download) → *Open Folder*.
+   - **OpenAI Codex**: `npm install -g @openai/codex`, dann `cd uni-tutor && codex`.
+3. **`/setup` ausführen** (in Codex: `$setup`). Der Assistent führt dich Schritt für Schritt von null bis zum fertigen System:
+   - prüft dein System und installiert fehlende Voraussetzungen (Python usw.) und die Umgebung
+   - fragt nach Uni, Moodle-URL, Login-Art und Kurs-IDs und schreibt die `config.yaml`
+   - lässt dich dein Passwort selbst sicher im Passwort-Speicher ablegen (der Assistent sieht es nie)
+   - startet den ersten Login und Sync, richtet optional Todoist, den Tablet-Ordner für `/solve` und den täglichen Sync um 07:00 ein
+
+`/setup` kann jederzeit erneut gestartet werden (z. B. für neue Kurse) und überspringt, was schon erledigt ist. Danach geht es weiter mit [Abschnitt 5](#5-nutzung-im-alltag). Die Abschnitte 2–4 sind die manuelle Variante und dienen als Nachschlagewerk.
+
+---
+
 ## 1. Ordnerstruktur
 
 ```text
@@ -119,19 +142,17 @@ In den Befehlen unten steht `PY` für den Python-Interpreter der Projektumgebung
 - **macOS / Linux**: `.unitutor/.venv/bin/python`
 - **Windows**: `.unitutor\.venv\Scripts\python.exe`
 
-> **Schnellstart:** Nach dem Klonen den Ordner in Claude Code / Antigravity / Codex öffnen und `/setup` (Codex: `$setup`) ausführen. Der Assistent führt Schritt für Schritt durch 4.1–4.5 (Uni, Moodle-URL, Login, Kurs-IDs, Passwort, erster Sync, Zeitplan) und kann jederzeit erneut gestartet werden. Passwörter gibst du immer selbst im Terminal ein. Die manuelle Variante folgt hier.
-
 ### Schritt 4.1: Repository klonen & Setup-Skript ausführen
 **macOS / Linux:**
 ```bash
-git clone https://github.com/SimoneEsposito-Git/uni-tutor.git Uni
-cd Uni
+git clone https://github.com/SimoneEsposito-Git/uni-tutor.git
+cd uni-tutor
 ./.unitutor/setup.sh
 ```
 **Windows (PowerShell):**
 ```powershell
-git clone https://github.com/SimoneEsposito-Git/uni-tutor.git Uni
-cd Uni
+git clone https://github.com/SimoneEsposito-Git/uni-tutor.git
+cd uni-tutor
 powershell -ExecutionPolicy Bypass -File .unitutor\setup.ps1
 ```
 Das Setup legt die Python-Umgebung `.unitutor/.venv` an, installiert alle Pakete und den Headless-Browser (Chromium) und erstellt deine lokale `.unitutor/config.yaml`.
