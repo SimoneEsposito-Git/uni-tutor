@@ -1,16 +1,18 @@
 #!/usr/bin/env bash
+# Setup für macOS und Linux (Windows: setup.ps1)
 set -euo pipefail
 
-MASTER_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-SYS_DIR="$MASTER_DIR/_system"
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SYS_DIR="$ROOT_DIR/_system"
 VENV_DIR="$SYS_DIR/.venv"
+PY="$VENV_DIR/bin/python"
 
-echo "==> Master-Tutor & Sync Setup"
-echo "    Projektordner: $MASTER_DIR"
+echo "==> Uni-Tutor & Sync Setup"
+echo "    Projektordner: $ROOT_DIR"
 
 # 1. Python 3 prüfen
 if ! command -v python3 >/dev/null 2>&1; then
-    echo "FEHLER: python3 wurde nicht gefunden. Bitte zuerst Python 3 installieren (siehe README.md)."
+    echo "FEHLER: python3 wurde nicht gefunden. Bitte zuerst Python 3.10+ installieren (siehe README.md)."
     exit 1
 fi
 
@@ -35,16 +37,20 @@ else
     echo "==> _system/config.yaml existiert bereits (wird nicht überschrieben)."
 fi
 
-# 4. LaunchAgent plist mit aktuellem Pfad generieren
-if [ -f "$SYS_DIR/com.master.sync.plist.template" ]; then
-    sed "s|__MASTER_DIR__|$MASTER_DIR|g" "$SYS_DIR/com.master.sync.plist.template" > "$SYS_DIR/com.master.sync.plist"
-    echo "==> _system/com.master.sync.plist für deinen Pfad generiert."
+# 4. Täglichen Sync vorbereiten
+if [ "$(uname)" = "Darwin" ]; then
+    sed "s|__ROOT_DIR__|$ROOT_DIR|g" "$SYS_DIR/com.unitutor.sync.plist.template" > "$SYS_DIR/com.unitutor.sync.plist"
+    SCHEDULE="cp _system/com.unitutor.sync.plist ~/Library/LaunchAgents/ && launchctl load ~/Library/LaunchAgents/com.unitutor.sync.plist"
+else
+    SCHEDULE="(crontab -l 2>/dev/null; echo '0 7 * * * \"$PY\" \"$SYS_DIR/moodle_sync.py\" >> \"$SYS_DIR/sync.log\" 2>&1') | crontab -"
 fi
 
 echo ""
 echo "✅ Setup abgeschlossen! Nächste Schritte (Details in README.md):"
-echo "   1. Passe '_system/config.yaml' an (Username & Kurs-IDs)."
-echo "   2. Speichere dein ISIS-Passwort im macOS-Schlüsselbund:"
-echo "      security add-generic-password -a \"\$USER\" -s isis-sync -w"
+echo "   1. Passe '_system/config.yaml' an (Moodle-URL, Login, Kurs-IDs)."
+echo "   2. Speichere dein Moodle-/SSO-Passwort im Passwort-Speicher des Systems:"
+echo "      $PY _system/keystore.py set password"
 echo "   3. Führe den ersten interaktiven Login aus:"
-echo "      $VENV_DIR/bin/python $SYS_DIR/isis_sync.py --login"
+echo "      $PY _system/moodle_sync.py --login"
+echo "   4. Optional: täglichen Sync um 07:00 aktivieren:"
+echo "      $SCHEDULE"
