@@ -25,14 +25,23 @@ def keychain(service: str) -> str:
     return r.stdout.strip()
 
 
-def fetch_ics() -> Calendar:
+def ics_url() -> str:
     url = keychain("isis-ics")
     if "preset_time" not in url:
         url += "&preset_what=all&preset_time=recentupcoming"  # default range is only the current week
-    r = requests.get(url, timeout=60)
-    r.raise_for_status()
-    (HERE / "calendar.ics").write_bytes(r.content)
-    return Calendar.from_ical(r.content)
+    return url
+
+
+def fetch_ics(ics: bytes | None = None) -> Calendar:
+    """ISIS now redirects the export to SSO login, so isis_sync passes the body fetched with its session."""
+    if ics is None:
+        r = requests.get(ics_url(), timeout=60)
+        r.raise_for_status()
+        ics = r.content
+    if not ics.lstrip().startswith(b"BEGIN:VCALENDAR"):
+        sys.exit("Todoist: calendar export returned a login page, not a calendar (run via isis_sync.py).")
+    (HERE / "calendar.ics").write_bytes(ics)
+    return Calendar.from_ical(ics)
 
 
 def label_of(ev) -> str | None:
@@ -51,11 +60,11 @@ def task_fields(ev) -> dict:
     return body
 
 
-def main():
+def main(ics: bytes | None = None):
     h = {"Authorization": f"Bearer {keychain('todoist-sync')}"}
     now = datetime.now(timezone.utc)
     added = 0
-    cal = fetch_ics()
+    cal = fetch_ics(ics)
     if "--relabel" in sys.argv:  # one-off: rewrite title/label of tasks already created
         for ev in cal.walk("VEVENT"):
             tid = STATE.get(str(ev.get("UID")))
