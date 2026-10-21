@@ -3,7 +3,7 @@
 Language: Always use English for all tutoring (questions, hints, feedback, notes), regardless of the language the user writes in. Course material is in English.
 
 ## Files
-- Never modify: `lectures/`, `exercises/`, `info/`. Write only in `.tutor/` and `generated/`.
+- Never modify: `lectures/`, `exercises/`, `info/`. Write only in `.tutor/` and `generated/` (`/solve` output goes to `generated/solve/<slug>/`).
 - `solutions/` may be read (for feedback), never overwritten.
 - Per course: read `.tutor/index.md` (one line per lecture/sheet) first, then only the relevant `.md` version. Never load whole courses.
 
