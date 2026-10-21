@@ -4,12 +4,12 @@
 Usage: solve_build.py <sheet_dir> [--export DIR]
 
 <sheet_dir> (generated/solve/<slug>/) holds:
-  meta.json          course, sheet, slug, exercises[{n,title,points,subtasks}], selected{n:[ids]}
-  tasks/ex<n>.tex    statement before the subtasks (may be empty)
-  tasks/ex<n><x>.tex statement of subtask x (exercises without subtasks: only ex<n>.tex)
-  sol/<n><x>.tex     solution of subtask x (no subtasks: sol/<n>.tex), body of a solution env
-Output: <slug>_worksheet.pdf (one exercise per page, blank space) and
-        <slug>_my_solutions.pdf (solved exercises collapsed, unsolved keep a page).
+  meta.json          course, sheet, slug, exercises[{n,title,points,tasks}], selected{n:[task letters]}
+  tasks/ex<n>.tex    exercise intro, before its tasks (may be empty)
+  tasks/ex<n><x>.tex statement of task x (exercises without lettered tasks: only ex<n>.tex)
+  sol/<n><x>.tex     solution of task x (no lettered tasks: sol/<n>.tex), body of a solution env
+Output: <slug>_worksheet.pdf (one task per page, blank space) and
+        <slug>_my_solutions.pdf (solved tasks collapsed, unsolved keep a page).
 """
 import json, shutil, subprocess, sys
 from pathlib import Path
@@ -38,26 +38,23 @@ def build_doc(meta, d, solutions):
         n = ex["n"]
         if selected is not None and str(n) not in selected:
             continue
-        out.append(f"\\exercise{{{n}}}{{{ex['title']}}}{{{ex['points']}}}\n")
-        out.append(read(d / f"tasks/ex{n}.tex") + "\n")
-        if ex["subtasks"]:
-            sel = (selected or {}).get(str(n), ex["subtasks"])
-            sols = []
-            for x in sel:
-                out.append(f"\\subtask{{{x}}}" + read(d / f"tasks/ex{n}{x}.tex") + "\n")
-                sol = read(d / f"sol/{n}{x}.tex")
-                sols.append(bool(sol))
-                if solutions and sol:
-                    out.append(f"\\begin{{solution}}\n{sol}\n\\end{{solution}}\n")
-            solved = all(sols)
-        else:
-            sol = read(d / f"sol/{n}.tex")
-            solved = bool(sol)
+        tasks = ex.get("tasks", ex.get("subtasks", []))
+        intro = read(d / f"tasks/ex{n}.tex")
+        head = f"\\exercise{{{n}}}{{{ex['title']}}}{{{ex['points']}}}\n{intro}\n"
+        # an exercise without lettered tasks is itself the single task
+        units = [(x, f"tasks/ex{n}{x}.tex", f"sol/{n}{x}.tex") for x in (selected or {}).get(str(n), tasks)] \
+            or [(None, None, f"sol/{n}.tex")]
+        for i, (x, tfile, sfile) in enumerate(units):
+            if i == 0:
+                out.append(head)
+            if x is not None:
+                out.append(f"\\task{{{n}}}{{{x}}}" + read(d / tfile) + "\n")
+            sol = read(d / sfile)
             if solutions and sol:
                 out.append(f"\\begin{{solution}}\n{sol}\n\\end{{solution}}\n")
-        # worksheet: always one page per exercise; solutions: collapse once solved
-        if not solutions or not solved:
-            out.append("\\vspace*{\\fill}\n\\clearpage\n")
+            # worksheet: one page per task; solutions: a solved task collapses, an open one keeps its page
+            if not solutions or not sol:
+                out.append("\\vspace*{\\fill}\n\\clearpage\n")
     return "\n".join(out)
 
 

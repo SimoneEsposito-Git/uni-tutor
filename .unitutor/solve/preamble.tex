@@ -34,5 +34,5 @@
 % Exercise heading
 \newcommand{\exercise}[3]{\renewcommand{\curex}{Exercise #1}\bigskip\noindent\textbf{\large Exercise #1: #2 (#3)}\par\smallskip}
 
-% Sub-question with explicit label so subsets keep their letters
-\newcommand{\subtask}[1]{\par\smallskip\noindent\textbf{(#1)}\hspace{0.5em}}
+% Task with explicit letter so subsets keep their labels; footer marks exercise and task
+\newcommand{\task}[2]{\renewcommand{\curex}{Exercise #1 -- task (#2)}\par\smallskip\noindent\textbf{(#2)}\hspace{0.5em}}

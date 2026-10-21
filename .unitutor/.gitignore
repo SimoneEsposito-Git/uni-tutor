@@ -12,3 +12,4 @@ todoist_state.json
 calendar.ics
 sync.log
 *.part
+solve/settings.json
