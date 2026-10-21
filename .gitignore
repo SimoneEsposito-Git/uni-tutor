@@ -1,19 +1,28 @@
-# macOS & Python
+# OS & Python
 .DS_Store
+Thumbs.db
+desktop.ini
 __pycache__/
 *.py[cod]
-_system/.venv/
 
-# Persönliche Konfiguration & Laufzeitdaten (Sync)
-_system/config.yaml
-_system/com.master.sync.plist
-_system/session.json
-_system/state.json
-_system/isis_state.json
-_system/todoist_state.json
-_system/calendar.ics
-_system/sync.log
-
-# Persönliche Kursordner & Dokumente (werden lokal durch den Sync angelegt)
-Semester*/
-Dokumente/
+# Alles außer dem Tool selbst ist persönlich (Kursordner, Dokumente, ...) und wird nie committet
+/*
+!/.gitignore
+!/.gitattributes
+!/AGENTS.md
+!/CLAUDE.md
+!/GEMINI.md
+!/README.md
+!/setup.sh
+!/setup.ps1
+!/_prompts/
+!/_system/
+!/.agents/
+/.agents/*
+!/.agents/skills/
+!/.claude/
+/.claude/*
+!/.claude/skills/
+!/.gemini/
+/.gemini/*
+!/.gemini/commands/

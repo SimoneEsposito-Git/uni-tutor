@@ -1,10 +1,14 @@
+# Persönliche Konfiguration & Laufzeitdaten
 .venv/
 __pycache__/
 config.yaml
+com.unitutor.sync.plist
 com.master.sync.plist
 session.json
+moodle_state.json
 isis_state.json
 state.json
+todoist_state.json
 calendar.ics
 sync.log
-todoist_state.json
+*.part
