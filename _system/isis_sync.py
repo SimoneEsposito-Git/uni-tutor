@@ -9,8 +9,9 @@ Session cookies are cached in session.json; a fresh login only happens when they
 """
 import hashlib, json, re, subprocess, sys
 from pathlib import Path
-from urllib.parse import unquote
+from urllib.parse import unquote, urljoin
 
+import requests
 from playwright.sync_api import sync_playwright
 
 from sync import CFG, MASTER, HERE, target_dir, to_markdown
@@ -76,8 +77,99 @@ def fetch(ctx, url: str, course_dir: Path, section: str, label: str, new: list):
     dest.chmod(0o444)
     if dest.suffix.lower() == ".pdf":
         to_markdown(dest, course_dir / ".tutor")
+    elif dest.suffix.lower() == ".ipynb":
+        ipynb_to_markdown(dest, course_dir / ".tutor")
     STATE[url] = digest
     new.append(dest.name)
+
+
+def ipynb_to_markdown(nb: Path, tutor_dir: Path):
+    cells = json.loads(nb.read_text())["cells"]
+    out = tutor_dir / "md" / (nb.stem + ".md")
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text("\n\n".join(
+        "".join(c["source"]) if c["cell_type"] != "code" else "```python\n" + "".join(c["source"]) + "\n```"
+        for c in cells))
+
+
+def fetch_videos(page, ctx, cmid: str, course_dir: Path, section: str, label: str, new: list):
+    """All videos of a videoservice collection. Their URLs are content hashes, so a known URL is unchanged."""
+    resp = ctx.request.post(
+        f"{BASE}/lib/ajax/service.php?sesskey={page.evaluate('M.cfg.sesskey')}&info=mod_videoservice_get_videos",
+        data=json.dumps([{"index": 0, "methodname": "mod_videoservice_get_videos",
+                          "args": {"coursemoduleid": cmid, "courseid": 0}}]),
+        headers={"Content-Type": "application/json"})
+    res = resp.json()[0]
+    if res.get("error"):
+        print(f"  videos {cmid}: {res.get('exception', {}).get('message', 'error')}")
+        return
+    cookies = {c["name"]: c["value"] for c in ctx.cookies(BASE)}
+    for v in res["data"]["videos"]:
+        if v["url"] in STATE:
+            continue
+        # recordings are lectures, whatever the collection is called
+        dest = course_dir / "lectures" / (re.sub(r'[\\/:*?"<>|]', "_", v["title"]).strip() + v["fileext"])
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        part = dest.with_name(dest.name + ".part")
+        with requests.get(v["url"], cookies=cookies, stream=True, timeout=120) as r:  # streamed: files are large
+            r.raise_for_status()
+            with open(part, "wb") as f:
+                for chunk in r.iter_content(1 << 20):
+                    f.write(chunk)
+        if dest.exists():
+            dest.chmod(0o644)
+        part.replace(dest)
+        dest.chmod(0o444)
+        STATE[v["url"]] = "video"
+        new.append(dest.name)
+
+
+def fetch_jupyter_book(ctx, start: str, course_dir: Path, section: str, label: str, new: list):
+    """Crawl a Jupyter Book site (e.g. DBT exercises) and download each chapter's source (.ipynb/.md)."""
+    root = start.rsplit("/", 1)[0] + "/"
+    todo, seen, sources = [start], set(), set()
+    while todo and len(seen) < 200:
+        url = todo.pop()
+        if url in seen:
+            continue
+        seen.add(url)
+        resp = ctx.request.get(url)
+        if not resp.ok or "text/html" not in resp.headers.get("content-type", ""):
+            continue
+        for href in re.findall(r'href="([^"#]+)', resp.text()):
+            link = urljoin(url, href)
+            if not link.startswith(root):
+                continue
+            if "/_sources/" in link and link not in sources:
+                sources.add(link)
+                fetch(ctx, link, course_dir, section, label, new)
+            elif link.endswith(".html"):
+                todo.append(link)
+
+
+def follow_url(page, ctx, href: str, course_dir: Path, section: str, label: str, new: list, done: set):
+    """mod/url: resolve the target and handle it if it holds files we know how to get."""
+    resp = ctx.request.get(href, max_redirects=0)
+    target = resp.headers.get("location")
+    if not target:  # embedded/framed display: link is in the page body
+        m = re.search(r'class="urlworkaround".*?href="([^"]+)"', resp.text(), re.S)
+        target = m and m.group(1).replace("&amp;", "&")
+    if not target or target in done:
+        return
+    done.add(target)
+    if m := re.search(r"/mod/videoservice/view\.php/cm/(\d+)", target):
+        if m.group(1) not in done:
+            done.add(m.group(1))
+            fetch_videos(page, ctx, m.group(1), course_dir, section, label, new)
+    elif target.startswith(BASE):
+        if "pluginfile.php" in target:
+            fetch(ctx, target, course_dir, section, label, new)
+    else:
+        resp = ctx.request.get(target)
+        if m := re.search(r'http-equiv="refresh"[^>]*url=([^"\'>]+)', resp.text(), re.I):  # HTML redirect
+            resp = ctx.request.get(urljoin(resp.url, m.group(1).strip()))
+        if resp.ok and 'href="_sources/' in resp.text():
+            fetch_jupyter_book(ctx, resp.url, course_dir, section, label, new)
 
 
 def sync_course(page, ctx, c):
@@ -92,14 +184,22 @@ def sync_course(page, ctx, c):
     items = page.eval_on_selector_all(
         "li.section", """els => els.map(s => ({
             section: (s.querySelector('.sectionname, h3')||{}).innerText || '',
-            links: [...s.querySelectorAll('a[href*="/mod/resource/"], a[href*="/mod/folder/"], a[href*="/mod/assign/"], a[href*="pluginfile.php"]')]
+            links: [...s.querySelectorAll('a[href*="/mod/resource/"], a[href*="/mod/folder/"], a[href*="/mod/assign/"], a[href*="/mod/page/"], a[href*="/mod/url/"], a[href*="/mod/videoservice/"], a[href*="pluginfile.php"]')]
                      .map(a => ({href: a.href, text: a.innerText}))
         }))""")
-    new = []
+    new, done = [], set()
     for it in items:
         for l in it["links"]:
             href, label = l["href"], l["text"]
-            if "/mod/folder/" in href or "/mod/assign/" in href:
+            if "/mod/url/" in href:
+                if href not in done:
+                    done.add(href)
+                    follow_url(page, ctx, href, course_dir, it["section"], label, new, done)
+            elif m := re.search(r"/mod/videoservice/view\.php\?id=(\d+)", href):
+                if m.group(1) not in done:
+                    done.add(m.group(1))
+                    fetch_videos(page, ctx, m.group(1), course_dir, it["section"], label, new)
+            elif "/mod/folder/" in href or "/mod/assign/" in href or "/mod/page/" in href:
                 page.goto(href, wait_until="domcontentloaded")
                 for f in page.eval_on_selector_all("a[href*='pluginfile.php']", "e => e.map(a => a.href)"):
                     fetch(ctx, f, course_dir, it["section"], label, new)
