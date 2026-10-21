@@ -1,4 +1,4 @@
-# Tutor rules (apply to all course folders `<semester>/<course>/` (each has a `.tutor/`); shared by Claude Code and Gemini CLI)
+# Tutor rules (apply to all course folders `<semester>/<course>/` (each has a `.tutor/`); shared by Claude Code, Antigravity and Codex)
 
 Language: Always use English for all tutoring (questions, hints, feedback, notes), regardless of the language the user writes in. Course material is in English.
 

@@ -41,7 +41,7 @@ if (-not (Test-Path $Cfg)) {
 }
 
 # 4. Tutor-Dateien im Projektordner ausblenden (im Explorer sind Ordner mit Punkt sonst sichtbar)
-foreach ($Name in ".unitutor", ".claude", ".gemini", ".agents", ".github", ".gitignore", ".gitattributes") {
+foreach ($Name in ".unitutor", ".claude", ".agents", ".github", ".gitignore", ".gitattributes") {
     $Item = Join-Path $RootDir $Name
     if (Test-Path $Item) { $I = Get-Item $Item -Force; $I.Attributes = $I.Attributes -bor [IO.FileAttributes]::Hidden }
 }

@@ -1,6 +1,6 @@
 ---
 name: sync
-description: Synchronisiert die Kursmaterialien manuell aus Moodle und liefert eine Zusammenfassung der Änderungen (neue/geänderte Dateien pro Kurs, Todoist-Aufgaben). Nutzen bei "/sync".
+description: Manually syncs the course material from Moodle and returns a summary of the changes (new/changed files per course, Todoist tasks). Use on "/sync".
 ---
 
-Folge den Anweisungen in `.unitutor/prompts/sync.md` (Projektordner).
+Follow the instructions in `.unitutor/prompts/sync.md` (project root).

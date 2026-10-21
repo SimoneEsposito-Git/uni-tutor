@@ -1,8 +1,0 @@
-description = "Sokratischer Tutor für Übungsblätter und Vorlesungen eines Kurses"
-prompt = """
-Folge diesen Anweisungen. Argumente: {{args}}
-
-@{.unitutor/AGENTS.md}
-
-@{.unitutor/prompts/tutor.md}
-"""

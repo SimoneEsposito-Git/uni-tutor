@@ -19,6 +19,3 @@ __pycache__/
 /.claude/*
 !/.claude/skills/
 !/.claude/CLAUDE.md
-!/.gemini/
-/.gemini/*
-!/.gemini/commands/

@@ -2,7 +2,7 @@
 
 Dieses Projekt verwandelt deinen Studienordner in ein automatisiertes Lernsystem – für jede Hochschule mit **Moodle** (z. B. ISIS an der TU Berlin), auf **macOS, Windows und Linux**:
 1. **Automatischer Kurs-Sync (`.unitutor/`)**: Lädt täglich neue Vorlesungsfolien, Übungsblätter, Vorlesungsvideos und Infos aus Moodle herunter – auch Dateien hinter Unterseiten (Textseiten, Links, Video-Sammlungen, Jupyter-Book-Übungen). Sortiert sie in die richtige Ordnerstruktur, schützt Originaldateien vor versehentlichem Überschreiben (schreibgeschützt) und wandelt PDFs und Notebooks in kompakte Markdown-Dateien (`.tutor/md/`) um, damit KI-Modelle sie token-sparend lesen können. Optional werden Abgabefristen nach **Todoist** synchronisiert. Funktioniert mit dem normalen Moodle-Login und mit Uni-SSO (Shibboleth o. Ä.).
-2. **Sokratischer KI-Tutor & Aufgabengenerator**: Vorkonfigurierte Regeln ([AGENTS.md](../.unitutor/AGENTS.md)) und Slash-Befehle (`/tutor`, `/repeat`, `/anki`, `/make-exercises`, `/sync`) für **Google Antigravity**, **Claude Code** und **Gemini CLI**. Der Tutor verrät niemals direkt die Lösung, sondern führt dich mit gestuften Hinweisen und exakten Folien-Zitaten durch die Aufgaben und merkt sich deinen Lernstand in `.tutor/progress.md`.
+2. **Sokratischer KI-Tutor & Aufgabengenerator**: Vorkonfigurierte Regeln ([AGENTS.md](../.unitutor/AGENTS.md)) und Slash-Befehle (`/tutor`, `/repeat`, `/anki`, `/make-exercises`, `/sync`) für **Claude Code**, **Google Antigravity** und **OpenAI Codex**. Der Tutor verrät niemals direkt die Lösung, sondern führt dich mit gestuften Hinweisen und exakten Folien-Zitaten durch die Aufgaben und merkt sich deinen Lernstand in `.tutor/progress.md`.
 
 ---
 
@@ -25,8 +25,7 @@ Dieses Projekt verwandelt deinen Studienordner in ein automatisiertes Lernsystem
 │
 │   --- ausgeblendet (Ordner mit Punkt) ---
 ├── .claude/                  # CLAUDE.md (bindet AGENTS.md ein) + Skills für Claude Code
-├── .agents/                  # rules/ (bindet AGENTS.md ein) + skills/ für Google Antigravity
-├── .gemini/commands/         # Custom Commands für Gemini CLI (binden AGENTS.md ein)
+├── .agents/                  # rules/ (Antigravity) + skills/ (Antigravity & Codex)
 ├── .github/README.md         # Diese Anleitung
 └── .unitutor/                # Das Tool selbst
     ├── AGENTS.md             # Zentrale Tutor-Regeln (für alle KI-Tools)
@@ -70,28 +69,47 @@ Danach PowerShell neu öffnen, damit `python`, `git` und `npm` gefunden werden.
 
 ---
 
-## 3. KI-Tools installieren (Antigravity & Claude Code)
+## 3. KI-Tools installieren (Claude Code, Antigravity, Codex)
 
-Du kannst das Projekt wahlweise mit **Google Antigravity**, **Claude Code** oder **Gemini CLI** (oder allen parallel) nutzen. Alle greifen auf dieselben Regeln ([AGENTS.md](../.unitutor/AGENTS.md)) und denselben Lernstand (`.tutor/progress.md`) zu.
+Du kannst das Projekt wahlweise mit **Claude Code**, **Google Antigravity** oder **OpenAI Codex** (oder allen parallel) nutzen. Alle greifen auf dieselben Regeln ([AGENTS.md](../.unitutor/AGENTS.md)) und denselben Lernstand (`.tutor/progress.md`) zu.
 
-### Option A: Google Antigravity (IDE & Agent)
-1. **Herunterladen & Installieren**: [https://antigravity.google/download](https://antigravity.google/download) (macOS & Windows).
-2. **Einrichten**: Beim ersten Start mit deinem Google-Account anmelden. Optional das Kommandozeilen-Tool `agy` installieren ("Install `agy` in PATH").
-3. **Projekt öffnen**: **Open Folder** → diesen Projektordner wählen. Antigravity lädt automatisch die Regeln aus `.agents/rules/` (bindet `.unitutor/AGENTS.md` ein) sowie die Skills aus `.agents/skills/`.
+| Tool | Regeln (`.unitutor/AGENTS.md`) | Befehle |
+|---|---|---|
+| Claude Code | immer, über `.claude/CLAUDE.md` | `/tutor`, `/repeat`, `/anki`, `/make-exercises`, `/sync`, `/end` aus `.claude/skills/` |
+| Antigravity | immer, über `.agents/rules/` | Skills aus `.agents/skills/` |
+| Codex | nur beim Aufruf eines Skills* | `$tutor`, `$repeat`, … aus `.agents/skills/` |
 
-### Option B: Claude Code (Anthropic CLI / IDE-Integration)
+\* Codex liest Regeln sonst nur aus einer `AGENTS.md` direkt im Projektordner. Damit dieser sauber bleibt, laden die Skills die Regeln selbst; im freien Chat ohne Skill gelten sie nicht.
+
+### Option A: Claude Code (Desktop-App, CLI oder IDE)
+- **Desktop-App**: [claude.ai/download](https://claude.ai/download) → Tab *Code* → diesen Projektordner öffnen.
+- **CLI**:
+  ```bash
+  npm install -g @anthropic-ai/claude-code
+  cd /Pfad/zum/Projektordner
+  claude
+  ```
+
+### Option B: Google Antigravity (IDE & Agent)
+1. **Herunterladen & Installieren**: [antigravity.google/download](https://antigravity.google/download) (macOS & Windows), mit dem Google-Account anmelden.
+2. **Projekt öffnen**: **Open Folder** → diesen Projektordner wählen.
+
+### Option C: OpenAI Codex (CLI, IDE-Erweiterung oder App)
 ```bash
-npm install -g @anthropic-ai/claude-code
+npm install -g @openai/codex
 cd /Pfad/zum/Projektordner
-claude
+codex
 ```
-Beim ersten Start öffnet sich ein Browserfenster zur Anmeldung. Claude Code liest automatisch `.claude/CLAUDE.md` (bindet `AGENTS.md` ein) und stellt die Slash-Befehle aus `.claude/skills/` bereit.
+Beim ersten Start mit dem ChatGPT-Account anmelden und den Ordner als vertrauenswürdig bestätigen.
 
-### Option C: Gemini CLI (Optional, für das Terminal)
-```bash
-npm install -g @google/gemini-cli
+### Testen, ob die Regeln geladen sind
+Stelle in einem **neuen** Chat im Projektordner diese Frage. Richtig ist: *Stufe 3 (nur auf "hint 3")* und *+7 Tage*.
+```text
+Which hint level do you only give on explicit request, and what is the next review interval for status "strong"? Answer from your instructions only.
 ```
-Im Projektordner `gemini` aufrufen. Es stellt die Befehle aus `.gemini/commands/` bereit; jeder Befehl lädt die Tutor-Regeln mit. *(Gemini CLI liest Regeln sonst nur aus einer `GEMINI.md` im Projektordner – im freien Chat ohne Slash-Befehl gelten sie daher nicht.)*
+- **Claude Code**: Zusätzlich zeigt `/memory`, dass `.claude/CLAUDE.md` geladen ist; `/tutor Database Technology` startet den Tutor.
+- **Antigravity**: Unter *Customizations → Rules* sollte die Workspace-Regel `tutor` erscheinen. Danach im Chat: `Starte den Tutor für Database Technology`.
+- **Codex**: Die Frage im freien Chat beantwortet Codex *nicht* aus den Regeln (siehe oben). Teste stattdessen `/skills` (listet `tutor`, `repeat`, …) und `$tutor Database Technology` – Codex sollte zuerst `.unitutor/AGENTS.md` lesen.
 
 ---
 
@@ -182,11 +200,11 @@ Den Log-Verlauf findest du in `.unitutor/sync.log`.
 
 ## 5. Nutzung im Alltag
 
-Öffne den Projektordner in **Antigravity** oder starte `claude` im Terminal:
+Öffne den Projektordner in **Claude Code**, **Antigravity** oder **Codex**:
 
 ### Sokratischer Tutor (`/tutor`)
 Starte eine Lernsitzung für einen Kurs oder ein konkretes Übungsblatt:
-- **In Claude Code / Gemini CLI**:
+- **In Claude Code** (in Codex `$tutor` statt `/tutor`):
   ```text
   /tutor Database Technology
   ```

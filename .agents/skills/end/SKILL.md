@@ -1,6 +1,6 @@
 ---
 name: end
-description: Beendet die aktuelle Tutor-Sitzung. Speichert den Fortschritt in .tutor/progress.md, gibt einen kurzen Rückblick und hört auf. Nutzen bei "/end".
+description: Ends the current tutoring session. Saves progress to .tutor/progress.md, gives a short recap, and stops. Use on "/end".
 ---
 
-Folge den Anweisungen in `.unitutor/prompts/end.md` (Projektordner).
+First read `.unitutor/AGENTS.md` (tutor rules) if it is not already in context. Then follow the instructions in `.unitutor/prompts/end.md` (project root).

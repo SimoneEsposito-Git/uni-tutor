@@ -1,8 +1,0 @@
-description = "Beendet die Tutor-Sitzung und speichert den Fortschritt"
-prompt = """
-Folge diesen Anweisungen.
-
-@{.unitutor/AGENTS.md}
-
-@{.unitutor/prompts/end.md}
-"""

@@ -1,8 +1,0 @@
-description = "Wiederholung aller fälligen Themen (Spaced Repetition) über alle Kurse"
-prompt = """
-Folge diesen Anweisungen. Argumente: {{args}}
-
-@{.unitutor/AGENTS.md}
-
-@{.unitutor/prompts/repeat.md}
-"""

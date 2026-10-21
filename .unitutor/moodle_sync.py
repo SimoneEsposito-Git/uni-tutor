@@ -252,7 +252,7 @@ def hide_tool_files():
     """Explorer shows dot folders, unlike Finder; re-applied each run so it also covers fresh clones."""
     root = HERE.parent
     if sys.platform == "win32":
-        for n in [".unitutor", ".claude", ".gemini", ".agents", ".github", ".gitignore", ".gitattributes"]:
+        for n in [".unitutor", ".claude", ".agents", ".github", ".gitignore", ".gitattributes"]:
             # attrib takes one path per call
             if (root / n).exists():
                 subprocess.run(["attrib", "+h", str(root / n)], capture_output=True)

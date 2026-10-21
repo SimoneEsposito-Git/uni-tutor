@@ -1,8 +1,0 @@
-description = "Erzeugt neue Übungsaufgaben im Stil der Original-Übungsblätter eines Kurses, in wählbarer Schwierigkeit (easy/medium/exam)"
-prompt = """
-Folge diesen Anweisungen. Argumente: {{args}}
-
-@{.unitutor/AGENTS.md}
-
-@{.unitutor/prompts/make-exercises.md}
-"""
