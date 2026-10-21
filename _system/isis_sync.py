@@ -36,14 +36,16 @@ def logged_in(page) -> bool:
 
 
 def login(page, interactive: bool):
-    page.goto(f"{BASE}/login/index.php", wait_until="domcontentloaded")
-    # cookie/terms banner ("Fortsetzen"), then the "TU-Login" button leading to Shibboleth
-    try:
-        page.get_by_text("Fortsetzen", exact=True).locator("visible=true").first.click(timeout=3000)
-    except Exception:
-        pass  # banner not shown or already accepted
-    page.get_by_role("link", name="TU-Login").or_(page.get_by_role("button", name="TU-Login")).first.click(timeout=15_000, force=True)
-    page.wait_for_url(re.compile(r"shibboleth\.tubit\.tu-berlin\.de"), timeout=30_000)
+    page.goto(f"{BASE}/login/index.php", wait_until="load")
+    shib = re.compile(r"shibboleth\.tubit\.tu-berlin\.de")
+    if not shib.search(page.url):  # ISIS sometimes redirects straight to Shibboleth
+        # cookie/terms banner ("Fortsetzen"), then the "TU-Login" button leading to Shibboleth
+        try:
+            page.get_by_text("Fortsetzen", exact=True).locator("visible=true").first.click(timeout=3000)
+        except Exception:
+            pass  # banner not shown or already accepted
+        page.get_by_role("link", name="TU-Login").or_(page.get_by_role("button", name="TU-Login")).first.click(timeout=15_000, force=True)
+        page.wait_for_url(shib, timeout=30_000)
     page.fill("input[type=text]", USER)
     page.fill("input[type=password]", password())
     page.keyboard.press("Enter")
