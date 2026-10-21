@@ -1,4 +1,4 @@
-description = "Kursmaterial manuell aus ISIS/Moodle synchronisieren und Änderungen zusammenfassen"
+description = "Kursmaterial manuell aus Moodle synchronisieren und Änderungen zusammenfassen"
 prompt = """
 Folge diesen Anweisungen.
 

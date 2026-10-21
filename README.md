@@ -1,185 +1,190 @@
-# KI-Tutor & Automatischer Kurs-Sync (Claude Code & Google Antigravity)
+# KI-Tutor & Automatischer Kurs-Sync für jede Uni mit Moodle
 
-Dieses Projekt verwandelt deinen Studienordner in ein automatisiertes Lernsystem:
-1. **Automatischer Kurs-Sync (`_system/`)**: Lädt täglich neue Vorlesungsfolien, Übungsblätter und Infos aus Moodle/ISIS herunter, sortiert sie automatisch in die richtige Ordnerstruktur, schützt Originaldateien vor versehentlichem Überschreiben (`chmod 444`) und wandelt PDFs direkt in kompakte Markdown-Dateien (`.tutor/md/`) um, damit KI-Modelle sie extrem token-sparend lesen können. Optional werden Abgabefristen direkt nach **Todoist** synchronisiert.
-2. **Sokratischer KI-Tutor & Aufgabengenerator**: Vorkonfigurierte Regeln ([AGENTS.md](file:///AGENTS.md)) und Slash-Befehle (`/tutor`, `/repeat`, `/anki`, `/make-exercises`, `/sync`) für **Google Antigravity**, **Claude Code** und **Gemini CLI**. Der Tutor verrät niemals direkt die Lösung, sondern führt dich mit gestuften Hinweisen und exakten Folien-Zitaten durch die Aufgaben und merkt sich deinen Lernstand in `.tutor/progress.md`.
+Dieses Projekt verwandelt deinen Studienordner in ein automatisiertes Lernsystem – für jede Hochschule mit **Moodle** (z. B. ISIS an der TU Berlin), auf **macOS, Windows und Linux**:
+1. **Automatischer Kurs-Sync (`_system/`)**: Lädt täglich neue Vorlesungsfolien, Übungsblätter, Vorlesungsvideos und Infos aus Moodle herunter – auch Dateien hinter Unterseiten (Textseiten, Links, Video-Sammlungen, Jupyter-Book-Übungen). Sortiert sie in die richtige Ordnerstruktur, schützt Originaldateien vor versehentlichem Überschreiben (schreibgeschützt) und wandelt PDFs und Notebooks in kompakte Markdown-Dateien (`.tutor/md/`) um, damit KI-Modelle sie token-sparend lesen können. Optional werden Abgabefristen nach **Todoist** synchronisiert. Funktioniert mit dem normalen Moodle-Login und mit Uni-SSO (Shibboleth o. Ä.).
+2. **Sokratischer KI-Tutor & Aufgabengenerator**: Vorkonfigurierte Regeln ([AGENTS.md](AGENTS.md)) und Slash-Befehle (`/tutor`, `/repeat`, `/anki`, `/make-exercises`, `/sync`) für **Google Antigravity**, **Claude Code** und **Gemini CLI**. Der Tutor verrät niemals direkt die Lösung, sondern führt dich mit gestuften Hinweisen und exakten Folien-Zitaten durch die Aufgaben und merkt sich deinen Lernstand in `.tutor/progress.md`.
 
 ---
 
 ## 1. Ordnerstruktur
 
 ```text
-Master/
+<Projektordner>/
 ├── AGENTS.md                 # Zentrale Tutor-Regeln (für alle KI-Tools)
 ├── CLAUDE.md                 # Verweis auf AGENTS.md für Claude Code
 ├── GEMINI.md                 # Verweis auf AGENTS.md für Antigravity & Gemini CLI
-├── setup.sh                  # Einmaliges Setup-Skript (Python-Umgebung, Playwright, Config)
+├── setup.sh                  # Einmaliges Setup (macOS / Linux)
+├── setup.ps1                 # Einmaliges Setup (Windows)
 ├── _prompts/                 # Gemeinsame Prompt-Vorlagen für die Slash-Befehle
 │   ├── tutor.md              # Ablauf für /tutor
 │   ├── anki.md               # Ablauf für /anki (Anki-Deck aus Vorlesung/Kapitel)
 │   ├── repeat.md             # Ablauf für /repeat (fällige Wiederholungen, kursübergreifend)
 │   ├── make-exercises.md     # Ablauf für /make-exercises
 │   └── sync.md               # Ablauf für /sync (manueller Sync + Änderungs-Zusammenfassung)
-├── .agents/skills/           # Skills für Google Antigravity (/tutor, /repeat, /anki, /make-exercises, /sync)
-├── .claude/skills/           # Skills für Claude Code (/tutor, /repeat, /anki, /make-exercises, /sync)
-├── .gemini/commands/         # Custom Commands für Gemini CLI (/tutor, /repeat, /anki, /make-exercises, /sync)
+├── .agents/skills/           # Skills für Google Antigravity
+├── .claude/skills/           # Skills für Claude Code
+├── .gemini/commands/         # Custom Commands für Gemini CLI
 ├── _system/                  # Synchronisations-Skripte
-│   ├── config.example.yaml   # Vorlage für deine Kurs-Konfiguration
-│   ├── isis_sync.py          # Browser-Sync via Playwright (Shibboleth / TU-Login)
+│   ├── config.example.yaml   # Vorlage für deine Konfiguration (Moodle-URL, Login, Kurse)
+│   ├── moodle_sync.py        # Browser-Sync via Playwright (Moodle-Login oder SSO)
+│   ├── keystore.py           # Passwörter/Tokens im Passwort-Speicher des Systems ablegen
 │   ├── sync.py               # Alternativer Moodle-Sync via REST-Token + PDF->Markdown
 │   ├── todoist_sync.py       # Optional: Moodle-Kalender-Deadlines -> Todoist
 │   └── requirements.txt      # Python-Abhängigkeiten
-└── Semester 1/               # Wird automatisch vom Sync pro Kurs angelegt (in .gitignore)
+└── <Semester>/               # Wird automatisch vom Sync pro Kurs angelegt (nie committet)
     └── <Kursname>/
-        ├── lectures/         # Vorlesungsfolien (schreibgeschützt)
+        ├── lectures/         # Vorlesungsfolien & -videos (schreibgeschützt)
         ├── exercises/        # Übungsblätter (schreibgeschützt)
         ├── info/             # Organisatorisches (schreibgeschützt)
         ├── solutions/        # Eigene Lösungen / Musterlösungen (KI darf lesen, nie ändern)
         ├── generated/        # Von /make-exercises generierte Übungsblätter & Lösungen
         └── .tutor/           # Arbeitsverzeichnis der KI
-            ├── md/           # Automatisch aus PDFs extrahierter Text (.md)
+            ├── md/           # Automatisch aus PDFs/Notebooks extrahierter Text (.md)
             ├── index.md      # Kurzindex (1 Zeile pro Vorlesung/Blatt, falls angelegt)
             ├── progress.md   # Dein Lernfortschritt (repeat → ok → good → strong → solid, Spaced Repetition)
             └── style_guide.md# Automatisch analysierter Stil der Übungsblätter
 ```
 
+Alles außer den Dateien des Tools selbst (Kursordner, eigene Dokumente, Konfiguration, Sessions) ist per `.gitignore` vom Repository ausgeschlossen.
+
 ---
 
-## 2. Voraussetzungen installieren (falls noch nichts installiert ist)
+## 2. Voraussetzungen installieren
 
-Öffne das **Terminal** (`Cmd + Leertaste` → `Terminal` eingeben) auf deinem Mac.
+Benötigt werden **Python 3.10+**, **Git** und (für die CLI-Tools) **Node.js**.
 
-### Schritt 2.1: Xcode Command Line Tools & Homebrew
-Falls du noch kein `git` oder `brew` installiert hast, führe folgenden Befehl aus:
-
+### macOS
+Öffne das **Terminal** (`Cmd + Leertaste` → `Terminal`):
 ```bash
 xcode-select --install
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-```
-*(Folge den Anweisungen im Terminal, um Homebrew am Ende zu deinem `PATH` hinzuzufügen).*
-
-### Schritt 2.2: Python 3, Node.js und Git installieren
-Python wird für die Sync-Skripte benötigt, Node.js für CLI-Tools wie Claude Code / Gemini CLI:
-
-```bash
 brew install python node git
 ```
+*(Folge den Anweisungen im Terminal, um Homebrew zu deinem `PATH` hinzuzufügen).*
+
+### Windows
+Öffne **PowerShell** (Startmenü → `PowerShell`):
+```powershell
+winget install Python.Python.3.12 Git.Git OpenJS.NodeJS.LTS
+```
+Danach PowerShell neu öffnen, damit `python`, `git` und `npm` gefunden werden.
+
+### Linux
+Über den Paketmanager deiner Distribution, z. B. `sudo apt install python3 python3-venv git nodejs npm`.
 
 ---
 
 ## 3. KI-Tools installieren (Antigravity & Claude Code)
 
-Du kannst das Projekt wahlweise mit **Google Antigravity**, **Claude Code** oder **Gemini CLI** (oder allen parallel) nutzen. Alle greifen auf dieselben Regeln ([AGENTS.md](file:///AGENTS.md)) und denselben Lernstand (`.tutor/progress.md`) zu.
+Du kannst das Projekt wahlweise mit **Google Antigravity**, **Claude Code** oder **Gemini CLI** (oder allen parallel) nutzen. Alle greifen auf dieselben Regeln ([AGENTS.md](AGENTS.md)) und denselben Lernstand (`.tutor/progress.md`) zu.
 
 ### Option A: Google Antigravity (IDE & Agent)
-1. **Herunterladen & Installieren**:
-   - Lade **Google Antigravity** von [https://antigravity.google/download](https://antigravity.google/download) herunter (oder via Homebrew: `brew install --cask antigravity`).
-   - Ziehe `Antigravity.app` in deinen `Programme`-Ordner (`Applications`) und starte die App.
-2. **Einrichten**:
-   - Melde dich beim ersten Start mit deinem Google-Account an.
-   - Optional im Onboarding: Installiere das Kommandozeilen-Tool `agy` ("Install `agy` in PATH"), damit du das Projekt jederzeit aus dem Terminal mit `agy .` öffnen kannst.
-3. **Projekt öffnen**:
-   - Klicke auf **Open Folder** und wähle diesen `Master`-Ordner aus.
-   - Antigravity lädt automatisch die Regeln aus `GEMINI.md` / `AGENTS.md` sowie die Skills aus `.agents/skills/` (`tutor` und `make-exercises`).
+1. **Herunterladen & Installieren**: [https://antigravity.google/download](https://antigravity.google/download) (macOS & Windows).
+2. **Einrichten**: Beim ersten Start mit deinem Google-Account anmelden. Optional das Kommandozeilen-Tool `agy` installieren ("Install `agy` in PATH").
+3. **Projekt öffnen**: **Open Folder** → diesen Projektordner wählen. Antigravity lädt automatisch `GEMINI.md` / `AGENTS.md` sowie die Skills aus `.agents/skills/`.
 
 ### Option B: Claude Code (Anthropic CLI / IDE-Integration)
-1. **Installieren**:
-   ```bash
-   npm install -g @anthropic-ai/claude-code
-   ```
-2. **Einrichten & Starten**:
-   - Wechsle im Terminal in diesen Projektordner und starte Claude:
-     ```bash
-     cd /Pfad/zu/Master
-     claude
-     ```
-   - Beim ersten Start öffnet sich ein Browserfenster zur Anmeldung mit deinem Anthropic-/Claude-Account.
-   - Claude Code liest automatisch `CLAUDE.md` (welches `AGENTS.md` einbindet) und stellt die Slash-Befehle `/tutor` und `/make-exercises` aus `.claude/skills/` bereit.
+```bash
+npm install -g @anthropic-ai/claude-code
+cd /Pfad/zum/Projektordner
+claude
+```
+Beim ersten Start öffnet sich ein Browserfenster zur Anmeldung. Claude Code liest automatisch `CLAUDE.md` (bindet `AGENTS.md` ein) und stellt die Slash-Befehle aus `.claude/skills/` bereit.
 
 ### Option C: Gemini CLI (Optional, für das Terminal)
-1. **Installieren**:
-   ```bash
-   npm install -g @google/gemini-cli
-   ```
-2. **Starten**:
-   - Im Projektordner `gemini` aufrufen. Es liest automatisch `GEMINI.md` und die Befehle aus `.gemini/commands/`.
+```bash
+npm install -g @google/gemini-cli
+```
+Im Projektordner `gemini` aufrufen. Es liest automatisch `GEMINI.md` und die Befehle aus `.gemini/commands/`.
 
 ---
 
 ## 4. Projekt & Automatischen Kurs-Sync einrichten
 
+In den Befehlen unten steht `PY` für den Python-Interpreter der Projektumgebung:
+- **macOS / Linux**: `_system/.venv/bin/python`
+- **Windows**: `_system\.venv\Scripts\python.exe`
+
 ### Schritt 4.1: Repository klonen & Setup-Skript ausführen
+**macOS / Linux:**
 ```bash
-git clone https://github.com/SimoneEsposito-Git/uni-tutor.git Master
-cd Master
-chmod +x setup.sh
+git clone https://github.com/SimoneEsposito-Git/uni-tutor.git Uni
+cd Uni
 ./setup.sh
 ```
-Das Skript `setup.sh` erledigt automatisch:
-- Anlage der Python-Umgebung `_system/.venv`
-- Installation aller Python-Pakete (`pymupdf`, `playwright`, `pyyaml`, `requests`, `icalendar`)
-- Download des Headless-Browsers für Playwright (`chromium`)
-- Erstellung deiner lokalen `_system/config.yaml` und `_system/com.master.sync.plist`
+**Windows (PowerShell):**
+```powershell
+git clone https://github.com/SimoneEsposito-Git/uni-tutor.git Uni
+cd Uni
+powershell -ExecutionPolicy Bypass -File setup.ps1
+```
+Das Setup legt die Python-Umgebung `_system/.venv` an, installiert alle Pakete und den Headless-Browser (Chromium) und erstellt deine lokale `_system/config.yaml`.
 
-### Schritt 4.2: Kurse in `_system/config.yaml` eintragen
-Öffne `_system/config.yaml` und trage deinen Login-Namen sowie deine Kurse ein. Die Kurs-ID findest du in der Browser-URL deines ISIS-/Moodle-Kurses (`https://isis.tu-berlin.de/course/view.php?id=12345`):
+### Schritt 4.2: `_system/config.yaml` anpassen
+Trage die Adresse deiner Moodle-Instanz, deinen Login-Namen und deine Kurse ein. Die Kurs-ID steht in der Browser-URL des Kurses (`.../course/view.php?id=12345`):
 
 ```yaml
-moodle_url: "https://isis.tu-berlin.de"
-token_env: MOODLE_TOKEN
-ics_url_env: MOODLE_ICS_URL
-username: "dein_tubit_username"
+moodle_url: "https://moodle.example-uni.de"
+username: "dein_login_name"
+
+login:                       # weglassen, wenn sich dein Moodle mit dem normalen Formular anmeldet
+  sso_button: "Uni-Login"    # Text des SSO-Buttons auf der Moodle-Login-Seite
+  consent_button: "Fortsetzen"  # optional: Cookie-Banner, das vorher bestätigt werden muss
 
 courses:
-  - id: 49346
+  - id: 12345
     name: "Database Technology"
-    semester: "Semester 1"
+    semester: "Semester 1"   # beliebiger Ordnername, z. B. "WiSe 26-27"
 ```
+*Beispiel TU Berlin (ISIS):* `moodle_url: "https://isis.tu-berlin.de"`, `sso_button: "TU-Login"`, `consent_button: "Fortsetzen"`.
 
-### Schritt 4.3: Passwörter sicher im macOS-Schlüsselbund speichern
-Es werden **niemals** Passwörter oder API-Tokens in Dateien gespeichert. Alles liegt verschlüsselt in der macOS Keychain:
+### Schritt 4.3: Passwörter sicher speichern
+Es werden **niemals** Passwörter oder API-Tokens in Dateien gespeichert. Sie liegen im Passwort-Speicher deines Systems (macOS-Schlüsselbund, Windows-Anmeldeinformationsverwaltung, Linux Secret Service):
 
-1. **ISIS / TU-Login Passwort speichern** (Pflicht für `isis_sync.py`):
+1. **Moodle-/SSO-Passwort** (Pflicht):
    ```bash
-   security add-generic-password -a "$USER" -s isis-sync -w
+   PY _system/keystore.py set password
    ```
-   *(Du wirst nach der Eingabe des Befehls unsichtbar nach deinem Passwort gefragt).*
+   *(Du wirst unsichtbar nach dem Passwort gefragt).*
 
-2. **Optional: Todoist-Integration für Abgabefristen**:
-   Wenn du möchtest, dass Moodle-Kalender-Deadlines automatisch als Aufgaben in Todoist angelegt werden, speichere deinen Todoist API-Token (Todoist → Einstellungen → Integrationen → Entwickler) und deine private Moodle-Kalender-Export-URL (ISIS → Kalender → Kalender exportieren → URL abrufen):
+2. **Optional: Todoist-Integration für Abgabefristen** – Moodle-Kalender-Deadlines werden automatisch als Todoist-Aufgaben angelegt. Benötigt deinen Todoist API-Token (Todoist → Einstellungen → Integrationen → Entwickler) und deine private Kalender-Export-URL (Moodle → Kalender → Kalender exportieren → URL abrufen):
    ```bash
-   security add-generic-password -a "$USER" -s todoist-sync -w
-   security add-generic-password -a "$USER" -s isis-ics -w
+   PY _system/keystore.py set todoist
+   PY _system/keystore.py set ics
    ```
-   *(Falls du diese beiden Einträge weglässt, überspringt der Sync den Todoist-Schritt automatisch).*
+   *(Ohne diese Einträge überspringt der Sync den Todoist-Schritt automatisch.)*
+
+Mit `PY _system/keystore.py check` siehst du, welche Einträge vorhanden sind. Die Eintragsnamen lassen sich unter `secrets:` in der `config.yaml` ändern.
 
 ### Schritt 4.4: Erster Login & erster Sync
-Beim allerersten Mal führst du den Sync mit sichtbarem Browserfenster (`--login`) aus, um die Session-Cookies in `_system/session.json` zu speichern (z. B. falls 2FA oder ein Cookie-Banner bestätigt werden muss):
-
+Beim ersten Mal mit sichtbarem Browserfenster (`--login`), um die Session in `_system/session.json` zu speichern (z. B. falls 2FA oder ein Cookie-Banner bestätigt werden muss):
 ```bash
-_system/.venv/bin/python _system/isis_sync.py --login
+PY _system/moodle_sync.py --login
+```
+Danach jederzeit den normalen (unsichtbaren) Sync starten – oder `/sync` im KI-Tool verwenden:
+```bash
+PY _system/moodle_sync.py
 ```
 
-Danach kannst du jederzeit den normalen (unsichtbaren) Sync starten:
-
+### Schritt 4.5: Täglichen Hintergrund-Sync aktivieren (07:00 Uhr)
+**macOS** (LaunchAgent, läuft auch nach dem Aufwachen nach):
 ```bash
-_system/.venv/bin/python _system/isis_sync.py
+cp _system/com.unitutor.sync.plist ~/Library/LaunchAgents/
+launchctl load ~/Library/LaunchAgents/com.unitutor.sync.plist
 ```
-
-### Schritt 4.5: Täglichen Hintergrund-Sync aktivieren (macOS LaunchAgent)
-Damit deine Kurse jeden Morgen um 07:00 Uhr (bzw. beim Aufklappen des Macs) automatisch synchronisiert werden:
-
-```bash
-cp _system/com.master.sync.plist ~/Library/LaunchAgents/
-launchctl load ~/Library/LaunchAgents/com.master.sync.plist
+**Windows** (Aufgabenplanung, holt verpasste Läufe nach):
+```powershell
+powershell -ExecutionPolicy Bypass -File setup.ps1 -Schedule
 ```
-Den Log-Verlauf kannst du jederzeit in `_system/sync.log` einsehen.
+**Linux**: `setup.sh` gibt am Ende eine passende `crontab`-Zeile aus.
+
+Den Log-Verlauf findest du in `_system/sync.log`.
 
 ---
 
 ## 5. Nutzung im Alltag
 
-Öffne den `Master`-Ordner in **Antigravity** oder starte `claude` im Terminal:
+Öffne den Projektordner in **Antigravity** oder starte `claude` im Terminal:
 
 ### Sokratischer Tutor (`/tutor`)
 Starte eine Lernsitzung für einen Kurs oder ein konkretes Übungsblatt:

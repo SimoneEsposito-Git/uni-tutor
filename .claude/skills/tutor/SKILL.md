@@ -3,4 +3,4 @@ name: tutor
 description: Socratic tutor for a course's exercise sheets and lectures. Use on "/tutor <course>" or when going through tasks/lectures. Never reveals solutions. English only.
 ---
 
-Follow the instructions in `_prompts/tutor.md` (Master folder). User arguments: course, optionally topic/level.
+Follow the instructions in `_prompts/tutor.md` (project root). User arguments: course, optionally topic/level.

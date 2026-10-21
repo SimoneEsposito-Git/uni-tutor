@@ -5,7 +5,7 @@ Generates an Anki deck from one lecture or book chapter.
 Arguments: course (or infer from context), and lecture/chapter (e.g. "Lecture 4", "ch. 6.2"). If either is ambiguous, ask once.
 
 ## Steps
-1. Folder `Semester*/<course>/`. Read `.tutor/index.md`, then only the `.md` of the chosen lecture/chapter. Source = lectures/book only (never `exercises/` or `solutions/`). Skip introduction lectures.
+1. Folder `*/<course>/` (the one containing `.tutor/`). Read `.tutor/index.md`, then only the `.md` of the chosen lecture/chapter. Source = lectures/book only (never `exercises/` or `solutions/`). Skip introduction lectures.
 2. Select: only what the student must truly know (definitions, mechanisms, "why", key formulas, distinctions, typical pitfalls). Drop admin, anecdotes, trivia, one-off examples. Typical yield: 15-40 cards per lecture. Optional: weight topics with status `repeat` in `.tutor/progress.md`.
 3. Write cards per the rules below, then self-check every card against the checklist; fix or drop failures.
 4. Save to `generated/anki_<lecture>.tsv` (add `_2`, `_3`… if it exists). Write nothing else, outside `generated/`.
