@@ -249,14 +249,11 @@ def notify(msg: str):
 
 
 def hide_tool_files():
-    """Keep the project folder clean; re-applied each run since git rewrites files without their flags."""
+    """Explorer shows dot folders, unlike Finder; re-applied each run so it also covers fresh clones."""
     root = HERE.parent
-    if sys.platform == "darwin":
-        subprocess.run(["chflags", "hidden", root / "AGENTS.md", root / "GEMINI.md"], capture_output=True)
-    elif sys.platform == "win32":  # dot names are not hidden in Explorer
-        names = [".unitutor", ".claude", ".gemini", ".agents", ".github", ".gitignore", ".gitattributes", ".hidden",
-                 "AGENTS.md", "GEMINI.md"]
-        for n in names:  # attrib takes one path per call
+    if sys.platform == "win32":
+        for n in [".unitutor", ".claude", ".gemini", ".agents", ".github", ".gitignore", ".gitattributes"]:
+            # attrib takes one path per call
             if (root / n).exists():
                 subprocess.run(["attrib", "+h", str(root / n)], capture_output=True)
 

@@ -2,5 +2,7 @@ description = "Kursmaterial manuell aus Moodle synchronisieren und Änderungen z
 prompt = """
 Folge diesen Anweisungen.
 
+@{.unitutor/AGENTS.md}
+
 @{.unitutor/prompts/sync.md}
 """

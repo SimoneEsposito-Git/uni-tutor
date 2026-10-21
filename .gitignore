@@ -9,14 +9,12 @@ __pycache__/
 /*
 !/.gitignore
 !/.gitattributes
-!/.hidden
-!/AGENTS.md
-!/GEMINI.md
 !/.unitutor/
 !/.github/
 !/.agents/
 /.agents/*
 !/.agents/skills/
+!/.agents/rules/
 !/.claude/
 /.claude/*
 !/.claude/skills/

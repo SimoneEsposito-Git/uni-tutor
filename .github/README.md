@@ -2,7 +2,7 @@
 
 Dieses Projekt verwandelt deinen Studienordner in ein automatisiertes Lernsystem – für jede Hochschule mit **Moodle** (z. B. ISIS an der TU Berlin), auf **macOS, Windows und Linux**:
 1. **Automatischer Kurs-Sync (`.unitutor/`)**: Lädt täglich neue Vorlesungsfolien, Übungsblätter, Vorlesungsvideos und Infos aus Moodle herunter – auch Dateien hinter Unterseiten (Textseiten, Links, Video-Sammlungen, Jupyter-Book-Übungen). Sortiert sie in die richtige Ordnerstruktur, schützt Originaldateien vor versehentlichem Überschreiben (schreibgeschützt) und wandelt PDFs und Notebooks in kompakte Markdown-Dateien (`.tutor/md/`) um, damit KI-Modelle sie token-sparend lesen können. Optional werden Abgabefristen nach **Todoist** synchronisiert. Funktioniert mit dem normalen Moodle-Login und mit Uni-SSO (Shibboleth o. Ä.).
-2. **Sokratischer KI-Tutor & Aufgabengenerator**: Vorkonfigurierte Regeln ([AGENTS.md](../AGENTS.md)) und Slash-Befehle (`/tutor`, `/repeat`, `/anki`, `/make-exercises`, `/sync`) für **Google Antigravity**, **Claude Code** und **Gemini CLI**. Der Tutor verrät niemals direkt die Lösung, sondern führt dich mit gestuften Hinweisen und exakten Folien-Zitaten durch die Aufgaben und merkt sich deinen Lernstand in `.tutor/progress.md`.
+2. **Sokratischer KI-Tutor & Aufgabengenerator**: Vorkonfigurierte Regeln ([AGENTS.md](../.unitutor/AGENTS.md)) und Slash-Befehle (`/tutor`, `/repeat`, `/anki`, `/make-exercises`, `/sync`) für **Google Antigravity**, **Claude Code** und **Gemini CLI**. Der Tutor verrät niemals direkt die Lösung, sondern führt dich mit gestuften Hinweisen und exakten Folien-Zitaten durch die Aufgaben und merkt sich deinen Lernstand in `.tutor/progress.md`.
 
 ---
 
@@ -23,14 +23,13 @@ Dieses Projekt verwandelt deinen Studienordner in ein automatisiertes Lernsystem
 │           ├── progress.md   # Dein Lernfortschritt (repeat → ok → good → strong → solid)
 │           └── style_guide.md# Automatisch analysierter Stil der Übungsblätter
 │
-│   --- ausgeblendet ---
-├── AGENTS.md                 # Zentrale Tutor-Regeln (für alle KI-Tools)
-├── GEMINI.md                 # Verweis auf AGENTS.md für Antigravity & Gemini CLI
-├── .claude/                  # CLAUDE.md (Verweis auf AGENTS.md) + Skills für Claude Code
-├── .agents/skills/           # Skills für Google Antigravity
-├── .gemini/commands/         # Custom Commands für Gemini CLI
+│   --- ausgeblendet (Ordner mit Punkt) ---
+├── .claude/                  # CLAUDE.md (bindet AGENTS.md ein) + Skills für Claude Code
+├── .agents/                  # rules/ (bindet AGENTS.md ein) + skills/ für Google Antigravity
+├── .gemini/commands/         # Custom Commands für Gemini CLI (binden AGENTS.md ein)
 ├── .github/README.md         # Diese Anleitung
 └── .unitutor/                # Das Tool selbst
+    ├── AGENTS.md             # Zentrale Tutor-Regeln (für alle KI-Tools)
     ├── setup.sh / setup.ps1  # Einmaliges Setup (macOS & Linux / Windows)
     ├── config.yaml           # Deine Konfiguration (aus config.example.yaml)
     ├── moodle_sync.py        # Browser-Sync via Playwright (Moodle-Login oder SSO)
@@ -40,7 +39,7 @@ Dieses Projekt verwandelt deinen Studienordner in ein automatisiertes Lernsystem
     └── prompts/              # Gemeinsame Abläufe der Slash-Befehle (/tutor, /repeat, /anki, ...)
 ```
 
-`AGENTS.md` und `GEMINI.md` müssen im Projektordner liegen, damit die KI-Tools sie finden. Das Setup (und jeder Sync) blendet sie deshalb im Finder/Explorer aus. Ordner mit Punkt sind auf macOS/Linux ohnehin unsichtbar; unter Windows blendet das Setup sie ebenfalls aus. Einblenden: `Cmd + Shift + .` im Finder bzw. *Ansicht → Ausgeblendete Elemente* im Explorer.
+Ordner mit Punkt sind auf macOS/Linux unsichtbar; unter Windows blenden Setup und Sync sie im Explorer aus. Einblenden: `Cmd + Shift + .` im Finder bzw. *Ansicht → Ausgeblendete Elemente* im Explorer.
 
 Alles außer den Dateien des Tools selbst (Kursordner, eigene Dokumente, Konfiguration, Sessions) ist per `.gitignore` vom Repository ausgeschlossen.
 
@@ -73,12 +72,12 @@ Danach PowerShell neu öffnen, damit `python`, `git` und `npm` gefunden werden.
 
 ## 3. KI-Tools installieren (Antigravity & Claude Code)
 
-Du kannst das Projekt wahlweise mit **Google Antigravity**, **Claude Code** oder **Gemini CLI** (oder allen parallel) nutzen. Alle greifen auf dieselben Regeln ([AGENTS.md](../AGENTS.md)) und denselben Lernstand (`.tutor/progress.md`) zu.
+Du kannst das Projekt wahlweise mit **Google Antigravity**, **Claude Code** oder **Gemini CLI** (oder allen parallel) nutzen. Alle greifen auf dieselben Regeln ([AGENTS.md](../.unitutor/AGENTS.md)) und denselben Lernstand (`.tutor/progress.md`) zu.
 
 ### Option A: Google Antigravity (IDE & Agent)
 1. **Herunterladen & Installieren**: [https://antigravity.google/download](https://antigravity.google/download) (macOS & Windows).
 2. **Einrichten**: Beim ersten Start mit deinem Google-Account anmelden. Optional das Kommandozeilen-Tool `agy` installieren ("Install `agy` in PATH").
-3. **Projekt öffnen**: **Open Folder** → diesen Projektordner wählen. Antigravity lädt automatisch `GEMINI.md` / `AGENTS.md` sowie die Skills aus `.agents/skills/`.
+3. **Projekt öffnen**: **Open Folder** → diesen Projektordner wählen. Antigravity lädt automatisch die Regeln aus `.agents/rules/` (bindet `.unitutor/AGENTS.md` ein) sowie die Skills aus `.agents/skills/`.
 
 ### Option B: Claude Code (Anthropic CLI / IDE-Integration)
 ```bash
@@ -92,7 +91,7 @@ Beim ersten Start öffnet sich ein Browserfenster zur Anmeldung. Claude Code lie
 ```bash
 npm install -g @google/gemini-cli
 ```
-Im Projektordner `gemini` aufrufen. Es liest automatisch `GEMINI.md` und die Befehle aus `.gemini/commands/`.
+Im Projektordner `gemini` aufrufen. Es stellt die Befehle aus `.gemini/commands/` bereit; jeder Befehl lädt die Tutor-Regeln mit. *(Gemini CLI liest Regeln sonst nur aus einer `GEMINI.md` im Projektordner – im freien Chat ohne Slash-Befehl gelten sie daher nicht.)*
 
 ---
 

@@ -2,5 +2,7 @@ description = "Sokratischer Tutor für Übungsblätter und Vorlesungen eines Kur
 prompt = """
 Folge diesen Anweisungen. Argumente: {{args}}
 
+@{.unitutor/AGENTS.md}
+
 @{.unitutor/prompts/tutor.md}
 """

@@ -2,5 +2,7 @@ description = "Erzeugt neue Übungsaufgaben im Stil der Original-Übungsblätter
 prompt = """
 Folge diesen Anweisungen. Argumente: {{args}}
 
+@{.unitutor/AGENTS.md}
+
 @{.unitutor/prompts/make-exercises.md}
 """

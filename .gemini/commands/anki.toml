@@ -2,5 +2,7 @@ description = "Erzeugt ein Anki-Deck aus einer Vorlesung oder einem Buchkapitel"
 prompt = """
 Folge diesen Anweisungen. Argumente: {{args}}
 
+@{.unitutor/AGENTS.md}
+
 @{.unitutor/prompts/anki.md}
 """

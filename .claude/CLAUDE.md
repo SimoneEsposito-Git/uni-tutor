@@ -1,1 +1,1 @@
-@../AGENTS.md
+@../.unitutor/AGENTS.md

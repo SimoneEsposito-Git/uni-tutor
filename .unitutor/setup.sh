@@ -37,12 +37,7 @@ else
     echo "==> .unitutor/config.yaml existiert bereits (wird nicht überschrieben)."
 fi
 
-# 4. Tutor-Dateien im Projektordner ausblenden (Ordner mit Punkt sind ohnehin versteckt)
-if [ "$(uname)" = "Darwin" ]; then
-    chflags hidden "$ROOT_DIR/AGENTS.md" "$ROOT_DIR/GEMINI.md"
-fi  # Linux: die Datei .hidden im Projektordner blendet sie im Dateimanager aus
-
-# 5. Täglichen Sync vorbereiten
+# 4. Täglichen Sync vorbereiten
 if [ "$(uname)" = "Darwin" ]; then
     sed "s|__ROOT_DIR__|$ROOT_DIR|g" "$SYS_DIR/com.unitutor.sync.plist.template" > "$SYS_DIR/com.unitutor.sync.plist"
     SCHEDULE="cp .unitutor/com.unitutor.sync.plist ~/Library/LaunchAgents/ && launchctl load ~/Library/LaunchAgents/com.unitutor.sync.plist"
