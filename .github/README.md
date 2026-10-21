@@ -1,49 +1,46 @@
 # KI-Tutor & Automatischer Kurs-Sync für jede Uni mit Moodle
 
 Dieses Projekt verwandelt deinen Studienordner in ein automatisiertes Lernsystem – für jede Hochschule mit **Moodle** (z. B. ISIS an der TU Berlin), auf **macOS, Windows und Linux**:
-1. **Automatischer Kurs-Sync (`_system/`)**: Lädt täglich neue Vorlesungsfolien, Übungsblätter, Vorlesungsvideos und Infos aus Moodle herunter – auch Dateien hinter Unterseiten (Textseiten, Links, Video-Sammlungen, Jupyter-Book-Übungen). Sortiert sie in die richtige Ordnerstruktur, schützt Originaldateien vor versehentlichem Überschreiben (schreibgeschützt) und wandelt PDFs und Notebooks in kompakte Markdown-Dateien (`.tutor/md/`) um, damit KI-Modelle sie token-sparend lesen können. Optional werden Abgabefristen nach **Todoist** synchronisiert. Funktioniert mit dem normalen Moodle-Login und mit Uni-SSO (Shibboleth o. Ä.).
-2. **Sokratischer KI-Tutor & Aufgabengenerator**: Vorkonfigurierte Regeln ([AGENTS.md](AGENTS.md)) und Slash-Befehle (`/tutor`, `/repeat`, `/anki`, `/make-exercises`, `/sync`) für **Google Antigravity**, **Claude Code** und **Gemini CLI**. Der Tutor verrät niemals direkt die Lösung, sondern führt dich mit gestuften Hinweisen und exakten Folien-Zitaten durch die Aufgaben und merkt sich deinen Lernstand in `.tutor/progress.md`.
+1. **Automatischer Kurs-Sync (`.unitutor/`)**: Lädt täglich neue Vorlesungsfolien, Übungsblätter, Vorlesungsvideos und Infos aus Moodle herunter – auch Dateien hinter Unterseiten (Textseiten, Links, Video-Sammlungen, Jupyter-Book-Übungen). Sortiert sie in die richtige Ordnerstruktur, schützt Originaldateien vor versehentlichem Überschreiben (schreibgeschützt) und wandelt PDFs und Notebooks in kompakte Markdown-Dateien (`.tutor/md/`) um, damit KI-Modelle sie token-sparend lesen können. Optional werden Abgabefristen nach **Todoist** synchronisiert. Funktioniert mit dem normalen Moodle-Login und mit Uni-SSO (Shibboleth o. Ä.).
+2. **Sokratischer KI-Tutor & Aufgabengenerator**: Vorkonfigurierte Regeln ([AGENTS.md](../AGENTS.md)) und Slash-Befehle (`/tutor`, `/repeat`, `/anki`, `/make-exercises`, `/sync`) für **Google Antigravity**, **Claude Code** und **Gemini CLI**. Der Tutor verrät niemals direkt die Lösung, sondern führt dich mit gestuften Hinweisen und exakten Folien-Zitaten durch die Aufgaben und merkt sich deinen Lernstand in `.tutor/progress.md`.
 
 ---
 
 ## 1. Ordnerstruktur
 
 ```text
-<Projektordner>/
+<Projektordner>/              # Sichtbar sind nur deine Kurse und eigenen Ordner
+├── <Semester>/               # Wird automatisch vom Sync pro Kurs angelegt (nie committet)
+│   └── <Kursname>/
+│       ├── lectures/         # Vorlesungsfolien & -videos (schreibgeschützt)
+│       ├── exercises/        # Übungsblätter (schreibgeschützt)
+│       ├── info/             # Organisatorisches (schreibgeschützt)
+│       ├── solutions/        # Eigene Lösungen / Musterlösungen (KI darf lesen, nie ändern)
+│       ├── generated/        # Von /make-exercises generierte Übungsblätter & Lösungen
+│       └── .tutor/           # Arbeitsverzeichnis der KI
+│           ├── md/           # Automatisch aus PDFs/Notebooks extrahierter Text (.md)
+│           ├── index.md      # Kurzindex (1 Zeile pro Vorlesung/Blatt, falls angelegt)
+│           ├── progress.md   # Dein Lernfortschritt (repeat → ok → good → strong → solid)
+│           └── style_guide.md# Automatisch analysierter Stil der Übungsblätter
+│
+│   --- ausgeblendet ---
 ├── AGENTS.md                 # Zentrale Tutor-Regeln (für alle KI-Tools)
-├── CLAUDE.md                 # Verweis auf AGENTS.md für Claude Code
 ├── GEMINI.md                 # Verweis auf AGENTS.md für Antigravity & Gemini CLI
-├── setup.sh                  # Einmaliges Setup (macOS / Linux)
-├── setup.ps1                 # Einmaliges Setup (Windows)
-├── _prompts/                 # Gemeinsame Prompt-Vorlagen für die Slash-Befehle
-│   ├── tutor.md              # Ablauf für /tutor
-│   ├── anki.md               # Ablauf für /anki (Anki-Deck aus Vorlesung/Kapitel)
-│   ├── repeat.md             # Ablauf für /repeat (fällige Wiederholungen, kursübergreifend)
-│   ├── make-exercises.md     # Ablauf für /make-exercises
-│   └── sync.md               # Ablauf für /sync (manueller Sync + Änderungs-Zusammenfassung)
+├── .claude/                  # CLAUDE.md (Verweis auf AGENTS.md) + Skills für Claude Code
 ├── .agents/skills/           # Skills für Google Antigravity
-├── .claude/skills/           # Skills für Claude Code
 ├── .gemini/commands/         # Custom Commands für Gemini CLI
-├── _system/                  # Synchronisations-Skripte
-│   ├── config.example.yaml   # Vorlage für deine Konfiguration (Moodle-URL, Login, Kurse)
-│   ├── moodle_sync.py        # Browser-Sync via Playwright (Moodle-Login oder SSO)
-│   ├── keystore.py           # Passwörter/Tokens im Passwort-Speicher des Systems ablegen
-│   ├── sync.py               # Alternativer Moodle-Sync via REST-Token + PDF->Markdown
-│   ├── todoist_sync.py       # Optional: Moodle-Kalender-Deadlines -> Todoist
-│   └── requirements.txt      # Python-Abhängigkeiten
-└── <Semester>/               # Wird automatisch vom Sync pro Kurs angelegt (nie committet)
-    └── <Kursname>/
-        ├── lectures/         # Vorlesungsfolien & -videos (schreibgeschützt)
-        ├── exercises/        # Übungsblätter (schreibgeschützt)
-        ├── info/             # Organisatorisches (schreibgeschützt)
-        ├── solutions/        # Eigene Lösungen / Musterlösungen (KI darf lesen, nie ändern)
-        ├── generated/        # Von /make-exercises generierte Übungsblätter & Lösungen
-        └── .tutor/           # Arbeitsverzeichnis der KI
-            ├── md/           # Automatisch aus PDFs/Notebooks extrahierter Text (.md)
-            ├── index.md      # Kurzindex (1 Zeile pro Vorlesung/Blatt, falls angelegt)
-            ├── progress.md   # Dein Lernfortschritt (repeat → ok → good → strong → solid, Spaced Repetition)
-            └── style_guide.md# Automatisch analysierter Stil der Übungsblätter
+├── .github/README.md         # Diese Anleitung
+└── .unitutor/                # Das Tool selbst
+    ├── setup.sh / setup.ps1  # Einmaliges Setup (macOS & Linux / Windows)
+    ├── config.yaml           # Deine Konfiguration (aus config.example.yaml)
+    ├── moodle_sync.py        # Browser-Sync via Playwright (Moodle-Login oder SSO)
+    ├── keystore.py           # Passwörter/Tokens im Passwort-Speicher des Systems ablegen
+    ├── todoist_sync.py       # Optional: Moodle-Kalender-Deadlines -> Todoist
+    ├── sync.py               # Alternativer Moodle-Sync via REST-Token
+    └── prompts/              # Gemeinsame Abläufe der Slash-Befehle (/tutor, /repeat, /anki, ...)
 ```
+
+`AGENTS.md` und `GEMINI.md` müssen im Projektordner liegen, damit die KI-Tools sie finden. Das Setup (und jeder Sync) blendet sie deshalb im Finder/Explorer aus. Ordner mit Punkt sind auf macOS/Linux ohnehin unsichtbar; unter Windows blendet das Setup sie ebenfalls aus. Einblenden: `Cmd + Shift + .` im Finder bzw. *Ansicht → Ausgeblendete Elemente* im Explorer.
 
 Alles außer den Dateien des Tools selbst (Kursordner, eigene Dokumente, Konfiguration, Sessions) ist per `.gitignore` vom Repository ausgeschlossen.
 
@@ -76,7 +73,7 @@ Danach PowerShell neu öffnen, damit `python`, `git` und `npm` gefunden werden.
 
 ## 3. KI-Tools installieren (Antigravity & Claude Code)
 
-Du kannst das Projekt wahlweise mit **Google Antigravity**, **Claude Code** oder **Gemini CLI** (oder allen parallel) nutzen. Alle greifen auf dieselben Regeln ([AGENTS.md](AGENTS.md)) und denselben Lernstand (`.tutor/progress.md`) zu.
+Du kannst das Projekt wahlweise mit **Google Antigravity**, **Claude Code** oder **Gemini CLI** (oder allen parallel) nutzen. Alle greifen auf dieselben Regeln ([AGENTS.md](../AGENTS.md)) und denselben Lernstand (`.tutor/progress.md`) zu.
 
 ### Option A: Google Antigravity (IDE & Agent)
 1. **Herunterladen & Installieren**: [https://antigravity.google/download](https://antigravity.google/download) (macOS & Windows).
@@ -89,7 +86,7 @@ npm install -g @anthropic-ai/claude-code
 cd /Pfad/zum/Projektordner
 claude
 ```
-Beim ersten Start öffnet sich ein Browserfenster zur Anmeldung. Claude Code liest automatisch `CLAUDE.md` (bindet `AGENTS.md` ein) und stellt die Slash-Befehle aus `.claude/skills/` bereit.
+Beim ersten Start öffnet sich ein Browserfenster zur Anmeldung. Claude Code liest automatisch `.claude/CLAUDE.md` (bindet `AGENTS.md` ein) und stellt die Slash-Befehle aus `.claude/skills/` bereit.
 
 ### Option C: Gemini CLI (Optional, für das Terminal)
 ```bash
@@ -102,25 +99,27 @@ Im Projektordner `gemini` aufrufen. Es liest automatisch `GEMINI.md` und die Bef
 ## 4. Projekt & Automatischen Kurs-Sync einrichten
 
 In den Befehlen unten steht `PY` für den Python-Interpreter der Projektumgebung:
-- **macOS / Linux**: `_system/.venv/bin/python`
-- **Windows**: `_system\.venv\Scripts\python.exe`
+- **macOS / Linux**: `.unitutor/.venv/bin/python`
+- **Windows**: `.unitutor\.venv\Scripts\python.exe`
 
 ### Schritt 4.1: Repository klonen & Setup-Skript ausführen
 **macOS / Linux:**
 ```bash
 git clone https://github.com/SimoneEsposito-Git/uni-tutor.git Uni
 cd Uni
-./setup.sh
+./.unitutor/setup.sh
 ```
 **Windows (PowerShell):**
 ```powershell
 git clone https://github.com/SimoneEsposito-Git/uni-tutor.git Uni
 cd Uni
-powershell -ExecutionPolicy Bypass -File setup.ps1
+powershell -ExecutionPolicy Bypass -File .unitutor\setup.ps1
 ```
-Das Setup legt die Python-Umgebung `_system/.venv` an, installiert alle Pakete und den Headless-Browser (Chromium) und erstellt deine lokale `_system/config.yaml`.
+Das Setup legt die Python-Umgebung `.unitutor/.venv` an, installiert alle Pakete und den Headless-Browser (Chromium) und erstellt deine lokale `.unitutor/config.yaml`.
 
-### Schritt 4.2: `_system/config.yaml` anpassen
+### Schritt 4.2: `.unitutor/config.yaml` anpassen
+Öffnen mit `open -e .unitutor/config.yaml` (macOS), `notepad .unitutor\config.yaml` (Windows) oder `xdg-open .unitutor/config.yaml` (Linux).
+
 Trage die Adresse deiner Moodle-Instanz, deinen Login-Namen und deine Kurse ein. Die Kurs-ID steht in der Browser-URL des Kurses (`.../course/view.php?id=12345`):
 
 ```yaml
@@ -143,42 +142,42 @@ Es werden **niemals** Passwörter oder API-Tokens in Dateien gespeichert. Sie li
 
 1. **Moodle-/SSO-Passwort** (Pflicht):
    ```bash
-   PY _system/keystore.py set password
+   PY .unitutor/keystore.py set password
    ```
    *(Du wirst unsichtbar nach dem Passwort gefragt).*
 
 2. **Optional: Todoist-Integration für Abgabefristen** – Moodle-Kalender-Deadlines werden automatisch als Todoist-Aufgaben angelegt. Benötigt deinen Todoist API-Token (Todoist → Einstellungen → Integrationen → Entwickler) und deine private Kalender-Export-URL (Moodle → Kalender → Kalender exportieren → URL abrufen):
    ```bash
-   PY _system/keystore.py set todoist
-   PY _system/keystore.py set ics
+   PY .unitutor/keystore.py set todoist
+   PY .unitutor/keystore.py set ics
    ```
    *(Ohne diese Einträge überspringt der Sync den Todoist-Schritt automatisch.)*
 
-Mit `PY _system/keystore.py check` siehst du, welche Einträge vorhanden sind. Die Eintragsnamen lassen sich unter `secrets:` in der `config.yaml` ändern.
+Mit `PY .unitutor/keystore.py check` siehst du, welche Einträge vorhanden sind. Die Eintragsnamen lassen sich unter `secrets:` in der `config.yaml` ändern.
 
 ### Schritt 4.4: Erster Login & erster Sync
-Beim ersten Mal mit sichtbarem Browserfenster (`--login`), um die Session in `_system/session.json` zu speichern (z. B. falls 2FA oder ein Cookie-Banner bestätigt werden muss):
+Beim ersten Mal mit sichtbarem Browserfenster (`--login`), um die Session in `.unitutor/session.json` zu speichern (z. B. falls 2FA oder ein Cookie-Banner bestätigt werden muss):
 ```bash
-PY _system/moodle_sync.py --login
+PY .unitutor/moodle_sync.py --login
 ```
 Danach jederzeit den normalen (unsichtbaren) Sync starten – oder `/sync` im KI-Tool verwenden:
 ```bash
-PY _system/moodle_sync.py
+PY .unitutor/moodle_sync.py
 ```
 
 ### Schritt 4.5: Täglichen Hintergrund-Sync aktivieren (07:00 Uhr)
 **macOS** (LaunchAgent, läuft auch nach dem Aufwachen nach):
 ```bash
-cp _system/com.unitutor.sync.plist ~/Library/LaunchAgents/
+cp .unitutor/com.unitutor.sync.plist ~/Library/LaunchAgents/
 launchctl load ~/Library/LaunchAgents/com.unitutor.sync.plist
 ```
 **Windows** (Aufgabenplanung, holt verpasste Läufe nach):
 ```powershell
-powershell -ExecutionPolicy Bypass -File setup.ps1 -Schedule
+powershell -ExecutionPolicy Bypass -File .unitutor\setup.ps1 -Schedule
 ```
-**Linux**: `setup.sh` gibt am Ende eine passende `crontab`-Zeile aus.
+**Linux**: `.unitutor/setup.sh` gibt am Ende eine passende `crontab`-Zeile aus.
 
-Den Log-Verlauf findest du in `_system/sync.log`.
+Den Log-Verlauf findest du in `.unitutor/sync.log`.
 
 ---
 

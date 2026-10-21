@@ -2,7 +2,7 @@
 """Daily Moodle sync: download new/changed course files, sort them, convert PDFs to .md.
 
 Needs MOODLE_TOKEN (Moodle mobile web service token) in the environment.
-Optional MOODLE_ICS_URL: saved to _system/calendar.ics for calendar subscription.
+Optional MOODLE_ICS_URL: saved to .unitutor/calendar.ics for calendar subscription.
 """
 import hashlib, json, os, re, sys
 from pathlib import Path
@@ -13,7 +13,7 @@ if sys.platform == "win32":  # console/log default to a legacy code page there
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 CFG_F = HERE / "config.yaml"
 if not CFG_F.exists():
-    sys.exit("Missing _system/config.yaml. Copy _system/config.example.yaml to _system/config.yaml first.")
+    sys.exit("Missing .unitutor/config.yaml. Copy .unitutor/config.example.yaml to .unitutor/config.yaml first.")
 CFG = yaml.safe_load(CFG_F.read_text(encoding="utf-8"))
 ROOT = Path(CFG.get("root_dir") or CFG.get("master_dir") or HERE.parent).expanduser().resolve()
 STATE_F = HERE / "state.json"

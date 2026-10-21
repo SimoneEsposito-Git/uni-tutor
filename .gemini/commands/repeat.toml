@@ -2,5 +2,5 @@ description = "Wiederholung aller fälligen Themen (Spaced Repetition) über all
 prompt = """
 Folge diesen Anweisungen. Argumente: {{args}}
 
-@{_prompts/repeat.md}
+@{.unitutor/prompts/repeat.md}
 """

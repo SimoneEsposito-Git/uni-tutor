@@ -248,7 +248,21 @@ def notify(msg: str):
         subprocess.run(["notify-send", "Uni sync", msg])
 
 
+def hide_tool_files():
+    """Keep the project folder clean; re-applied each run since git rewrites files without their flags."""
+    root = HERE.parent
+    if sys.platform == "darwin":
+        subprocess.run(["chflags", "hidden", root / "AGENTS.md", root / "GEMINI.md"], capture_output=True)
+    elif sys.platform == "win32":  # dot names are not hidden in Explorer
+        names = [".unitutor", ".claude", ".gemini", ".agents", ".github", ".gitignore", ".gitattributes", ".hidden",
+                 "AGENTS.md", "GEMINI.md"]
+        for n in names:  # attrib takes one path per call
+            if (root / n).exists():
+                subprocess.run(["attrib", "+h", str(root / n)], capture_output=True)
+
+
 def main():
+    hide_tool_files()
     interactive = "--login" in sys.argv
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=not interactive)

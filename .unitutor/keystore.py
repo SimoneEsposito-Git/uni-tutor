@@ -25,7 +25,7 @@ def get(key: str) -> str | None:
 
 def require(key: str) -> str:
     if (value := get(key)) is None:
-        sys.exit(f"No stored secret '{NAMES[key]}'. Run: python _system/keystore.py set {key}")
+        sys.exit(f"No stored secret '{NAMES[key]}'. Run: python .unitutor/keystore.py set {key}")
     return value
 
 

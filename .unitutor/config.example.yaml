@@ -1,5 +1,5 @@
 # Moodle-Sync Konfiguration
-# Kopiere diese Datei nach _system/config.yaml und passe sie an.
+# Kopiere diese Datei nach .unitutor/config.yaml und passe sie an.
 
 moodle_url: "https://moodle.example-uni.de"   # URL deiner Moodle-Instanz
 username: "dein_login_name"                   # Login-Name für moodle_sync.py
@@ -12,7 +12,7 @@ login:
   # consent_button: "Fortsetzen"              # Cookie-/Nutzungsbedingungen-Banner, falls vorhanden
 
 # Namen der Einträge im Passwort-Speicher (macOS-Schlüsselbund / Windows-Anmeldeinformationsverwaltung).
-# Setzen mit: python _system/keystore.py set password|ics|todoist
+# Setzen mit: python .unitutor/keystore.py set password|ics|todoist
 secrets:
   password: moodle-password                   # Moodle-/SSO-Passwort (Pflicht)
   ics: moodle-ics                             # Kalender-Export-URL (optional, für Todoist)
