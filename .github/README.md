@@ -2,7 +2,7 @@
 
 Dieses Projekt verwandelt deinen Studienordner in ein automatisiertes Lernsystem – für jede Hochschule mit **Moodle** (z. B. ISIS an der TU Berlin), auf **macOS, Windows und Linux**:
 1. **Automatischer Kurs-Sync (`.unitutor/`)**: Lädt täglich neue Vorlesungsfolien, Übungsblätter, Vorlesungsvideos und Infos aus Moodle herunter – auch Dateien hinter Unterseiten (Textseiten, Links, Video-Sammlungen, Jupyter-Book-Übungen). Sortiert sie in die richtige Ordnerstruktur, schützt Originaldateien vor versehentlichem Überschreiben (schreibgeschützt) und wandelt PDFs und Notebooks in kompakte Markdown-Dateien (`.tutor/md/`) um, damit KI-Modelle sie token-sparend lesen können. Optional werden Abgabefristen nach **Todoist** synchronisiert. Funktioniert mit dem normalen Moodle-Login und mit Uni-SSO (Shibboleth o. Ä.).
-2. **Sokratischer KI-Tutor & Aufgabengenerator**: Vorkonfigurierte Regeln ([AGENTS.md](../.unitutor/AGENTS.md)) und Slash-Befehle (`/tutor`, `/repeat`, `/anki`, `/make-exercises`, `/sync`) für **Claude Code**, **Google Antigravity** und **OpenAI Codex**. Der Tutor verrät niemals direkt die Lösung, sondern führt dich mit gestuften Hinweisen und exakten Folien-Zitaten durch die Aufgaben und merkt sich deinen Lernstand in `.tutor/progress.md`.
+2. **Sokratischer KI-Tutor & Aufgabengenerator**: Vorkonfigurierte Regeln ([AGENTS.md](../.unitutor/AGENTS.md)) und Slash-Befehle (`/setup`, `/tutor`, `/repeat`, `/anki`, `/make-exercises`, `/sync`) für **Claude Code**, **Google Antigravity** und **OpenAI Codex**. Der Tutor verrät niemals direkt die Lösung, sondern führt dich mit gestuften Hinweisen und exakten Folien-Zitaten durch die Aufgaben und merkt sich deinen Lernstand in `.tutor/progress.md`.
 
 ---
 
@@ -75,7 +75,7 @@ Du kannst das Projekt wahlweise mit **Claude Code**, **Google Antigravity** oder
 
 | Tool | Regeln (`.unitutor/AGENTS.md`) | Befehle |
 |---|---|---|
-| Claude Code | immer, über `.claude/CLAUDE.md` | `/tutor`, `/repeat`, `/anki`, `/make-exercises`, `/sync`, `/end` aus `.claude/skills/` |
+| Claude Code | immer, über `.claude/CLAUDE.md` | `/setup`, `/tutor`, `/repeat`, `/anki`, `/make-exercises`, `/sync`, `/end` aus `.claude/skills/` |
 | Antigravity | immer, über `.agents/rules/` | Skills aus `.agents/skills/` |
 | Codex | nur beim Aufruf eines Skills* | `$tutor`, `$repeat`, … aus `.agents/skills/` |
 
@@ -118,6 +118,8 @@ Which hint level do you only give on explicit request, and what is the next revi
 In den Befehlen unten steht `PY` für den Python-Interpreter der Projektumgebung:
 - **macOS / Linux**: `.unitutor/.venv/bin/python`
 - **Windows**: `.unitutor\.venv\Scripts\python.exe`
+
+> **Schnellstart:** Nach dem Klonen den Ordner in Claude Code / Antigravity / Codex öffnen und `/setup` (Codex: `$setup`) ausführen. Der Assistent führt Schritt für Schritt durch 4.1–4.5 (Uni, Moodle-URL, Login, Kurs-IDs, Passwort, erster Sync, Zeitplan) und kann jederzeit erneut gestartet werden. Passwörter gibst du immer selbst im Terminal ein. Die manuelle Variante folgt hier.
 
 ### Schritt 4.1: Repository klonen & Setup-Skript ausführen
 **macOS / Linux:**
