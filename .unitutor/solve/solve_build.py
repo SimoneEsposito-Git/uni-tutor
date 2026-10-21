@@ -4,7 +4,7 @@
 Usage: solve_build.py <sheet_dir> [--export DIR]
 
 <sheet_dir> (generated/solve/<slug>/) holds:
-  meta.json          course, sheet, slug, exercises[{n,title,points,tasks}], selected{n:[task letters]}
+  meta.json          course, sheet, slug, header_info[optional lines under the title], exercises[{n,title,points,tasks}], selected{n:[task letters]}
   tasks/ex<n>.tex    exercise intro, before its tasks (may be empty)
   tasks/ex<n><x>.tex statement of task x (exercises without lettered tasks: only ex<n>.tex)
   sol/<n><x>.tex     solution of task x (no lettered tasks: sol/<n>.tex), body of a solution env
@@ -22,11 +22,11 @@ def read(p):
 
 
 def header(meta):
+    extra = "".join(f"\\\\[0.2em]\n  {line}" for line in meta.get("header_info", []))
     return (
         "\\begin{center}\n"
         f"  {{\\LARGE\\bfseries {meta['course']}}}\\\\[0.6em]\n"
-        f"  {{\\Large {meta['sheet']}}}\\\\[0.8em]\n"
-        "  {\\normalsize Name: \\rule{5cm}{0.4pt}}\n"
+        f"  {{\\Large {meta['sheet']}}}{extra}\n"
         "\\end{center}\n"
     )
 
