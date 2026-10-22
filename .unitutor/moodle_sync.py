@@ -89,7 +89,8 @@ def fetch(ctx, url: str, course_dir: Path, section: str, label: str, new: list):
     digest = hashlib.sha256(body).hexdigest()
     if STATE.get(url) == digest:
         return
-    dest = target_dir(course_dir, section, label, "") / filename_of(resp, url)
+    fname = filename_of(resp, url)
+    dest = target_dir(course_dir, section, label, "", fname) / fname
     dest.parent.mkdir(parents=True, exist_ok=True)
     if dest.exists():
         dest.chmod(0o644)

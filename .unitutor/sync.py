@@ -32,11 +32,15 @@ def api(fn, **params):
     return data
 
 
-def target_dir(course_dir: Path, section: str, name: str, modname: str) -> Path:
-    s = f"{section} {name}".lower()
+def target_dir(course_dir: Path, section: str, name: str, modname: str, filename: str = "") -> Path:
+    s = f"{section} {name} {filename}".lower()
     if modname == "assign" or re.search(r"übung|exercise|sheet|blatt|homework|assignment", s):
         return course_dir / "exercises"
     if re.search(r"lecture|vorlesung|slides|folien", s):
+        return course_dir / "lectures"
+    # optional per-course regex in config.yaml (`lecture_pattern`) for courses whose lectures carry no such keyword
+    pat = next((c.get("lecture_pattern") for c in CFG["courses"] if c["name"] == course_dir.name), None)
+    if pat and re.search(pat, s):
         return course_dir / "lectures"
     return course_dir / "info"
 
@@ -69,7 +73,7 @@ def sync_course(c):
                 sig = f"{f.get('timemodified')}:{f.get('filesize')}"
                 if STATE.get(key) == sig:
                     continue
-                dest = target_dir(course_dir, section["name"], mod["name"], mod["modname"]) / f["filename"]
+                dest = target_dir(course_dir, section["name"], mod["name"], mod["modname"], f["filename"]) / f["filename"]
                 r = requests.get(f["fileurl"], params={"token": TOKEN}, timeout=120)
                 r.raise_for_status()
                 if dest.exists():
