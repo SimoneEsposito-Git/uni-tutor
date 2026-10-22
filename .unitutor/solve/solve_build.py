@@ -88,8 +88,9 @@ def main():
         made.append(compile_pdf(tex, f"{meta['slug']}_{suffix}", d))
     if export:
         export.mkdir(parents=True, exist_ok=True)
-        shutil.copy(made[0], export / made[0].name)
-        print(f"exported {made[0].name} -> {export}")
+        for m in made:
+            shutil.copy(m, export / m.name)
+            print(f"exported {m.name} -> {export}")
     for p in made:
         print(p)
 

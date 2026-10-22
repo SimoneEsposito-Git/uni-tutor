@@ -24,13 +24,17 @@ Save `{"tablet_folder": "<absolute path>" | null, "mode": "create|existing|none"
 
 ## Case B: work dir exists -> never recreate
 - Read `meta.json`; list status per task (solved = `sol/<id>.tex` exists, else open). New tasks requested: add them to `selected` + `tasks/`, rebuild, re-export.
-- If `tablet_folder` is set, check `<tablet_folder>/<course>/` for a newer annotated PDF (name starting with the slug, not `_worksheet`/`_my_solutions` if it is identical to ours) -> ingest (below).
+- Always, before tutoring, run these checks and report the result in one line each (do not skip, do not just list the folder):
+  1. Tablet folder (if `tablet_folder` is set): `ls -l "<tablet_folder>/<course>/"` (if the folder is missing, say so). Report whether `<slug>_worksheet.pdf` exists there; if missing or older than the work dir's copy, re-export with `--export`. iCloud placeholders (`.<name>.icloud`) mean the file is not downloaded yet: say so and ask the user to open it on the Mac or run `brctl download`.
+  2. Posted solution by the user: look for any other PDF there whose name starts with the slug (or any PDF newer than the exported worksheet) that is not byte-identical (`cmp`) to our `_worksheet`/`_my_solutions` -> it is an annotated PDF: ingest (below). If none, say "no annotated PDF posted yet".
+  3. Official solution: list `solutions/` (and `exercises/` for a solution file/zip for this sheet). Report whether one exists for this sheet; read only, use it for feedback, never reveal it.
 - Then start a tutor session on the open tasks (Case C).
 
 ## Ingest handwritten pages
 1. Render: `pdftoppm -r 110 -png <pdf> <scratchpad>/pg`; Read the images. Page -> task via the footer marker; inserted pages belong to the task before them.
 2. Transcribe the user's own work faithfully into `sol/<id>.tex` (body of a `solution` env; align/equation, `\pd`, `\R` available; sketches -> TikZ, or crop with `pdftoppm -x -y -W -H` into `sol/img/` and `\includegraphics`). Do not fix, complete or improve their maths. Mark unclear symbols `% CHECK: ...` and ask the user about them.
 3. Rebuild; solved tasks collapse, open ones keep their page. Report which tasks changed.
+4. Re-export with `--export "<tablet_folder>/<course>"` after every rebuild that changed `sol/` (Case A, B, C and ingest), so the tablet folder always holds the current `_worksheet` and `_my_solutions` PDFs.
 
 ## Case C: typing in chat
 User gives answers in words/rough maths; typeset them into `sol/<id>.tex`, rebuild. Same rule: never supply content they did not give.
