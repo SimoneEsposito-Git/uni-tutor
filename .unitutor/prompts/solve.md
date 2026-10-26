@@ -6,14 +6,14 @@ Arguments: `<sheet> [tasks]`, e.g. `sheet 2`, `sheet 2 1a 3`, `2 ex1b 2` (a bare
 
 ## Paths
 - Course folder: `*/<course>/` (contains `.tutor/`). Work dir: `<course>/generated/solve/<slug>/`, slug = `sheet02` (zero-padded sheet number).
-- Tools: `.unitutor/solve/solve_build.py` (build), `.unitutor/solve/preamble.tex` (template). Do not edit `exercises/`, `lectures/`, `info/`, `solutions/`.
+- Tools: `.unitutor/solve/solve_build.py` (build), `.unitutor/solve/preamble.tex` (template). Do not edit `exercises/`, `lectures/`, `info/`. `solutions/` is read-only except that `solve_build.py` saves `<slug>_my_solutions.pdf` there on every build (the user's own current solution; it is not an official solution).
 - Tablet exchange folder: read `tablet_folder` from `.unitutor/solve/settings.json` (personal, git-ignored; see First-time setup). Per course use `<tablet_folder>/<course>/`. The user's own sync tool (iCloud, OneDrive, Dropbox, Syncthing, ...) carries it to the tablet; never assume a specific one.
 
 ## Case A: work dir does not exist -> create
 1. Find the sheet in `exercises/` (zip: unzip into the scratchpad, never into `exercises/`). Task text: `.tutor/md` if the sheet is there, else `pdftotext -layout` of the PDF; look at the PDF pages (Read) for figures/axes.
 2. Write `meta.json` (course, sheet, slug, header_info, exercises[{n,title,points,tasks:[letters]}], `selected` {"n":[ids]}; omit `selected` for all tasks), `tasks/ex<n>.tex` (exercise intro before the tasks, may be empty) and `tasks/ex<n><x>.tex` per task (exercises without lettered tasks: only `ex<n>.tex`, solution `sol/<n>.tex`). Copy the task text faithfully, hints included; figures to draw on become blank space.
 3. Every time a new sheet is created (not when reusing one), ask: "Add extra info to the header (e.g. names and matriculation numbers of everyone working on it), or only the exercises and blank space?" If yes, ask for the lines (one per person or item) and store them as `header_info` (list of LaTeX-safe strings) in `meta.json`; if no, leave it out (empty header beyond course and sheet title). Do not assume the previous answer; you may offer to reuse it.
-4. Run `python3 .unitutor/solve/solve_build.py <workdir>`. Output: `<slug>_worksheet.pdf` (one task per page, footer "Exercise n -- task (x)"), `<slug>_my_solutions.pdf`.
+4. Run `python3 .unitutor/solve/solve_build.py <workdir>`. Output: `<slug>_worksheet.pdf` (one task per page, footer "Exercise n -- task (x)"), `<slug>_my_solutions.pdf` (or `<solutions_name>.pdf` if `meta.json` sets `solutions_name`); the build also copies `<slug>_my_solutions.pdf` to `<course>/solutions/` (overwriting the previous copy).
 5. If `settings.json` is missing, run First-time setup now. Then, if `tablet_folder` is set, copy the worksheet there with `solve_build.py <workdir> --export "<tablet_folder>/<course>"` (re-run is cheap). Tell the user where the worksheet is; with a tablet: write on it, insert extra pages right after the task they belong to, and export the annotated PDF to the same folder. Without a tablet: the PDF is in the work dir (print it or open it in any PDF editor).
 
 ## First-time setup (only when `.unitutor/solve/settings.json` does not exist)
@@ -27,7 +27,7 @@ Save `{"tablet_folder": "<absolute path>" | null, "mode": "create|existing|none"
 - Always, before tutoring, run these checks and report the result in one line each (do not skip, do not just list the folder):
   1. Tablet folder (if `tablet_folder` is set): `ls -l "<tablet_folder>/<course>/"` (if the folder is missing, say so). Report whether `<slug>_worksheet.pdf` exists there; if missing or older than the work dir's copy, re-export with `--export`. iCloud placeholders (`.<name>.icloud`) mean the file is not downloaded yet: say so and ask the user to open it on the Mac or run `brctl download`.
   2. Posted solution by the user: look for any other PDF there whose name starts with the slug (or any PDF newer than the exported worksheet) that is not byte-identical (`cmp`) to our `_worksheet`/`_my_solutions` -> it is an annotated PDF: ingest (below). If none, say "no annotated PDF posted yet".
-  3. Official solution: list `solutions/` (and `exercises/` for a solution file/zip for this sheet). Report whether one exists for this sheet; read only, use it for feedback, never reveal it.
+  3. Official solution: list `solutions/` (and `exercises/` for a solution file/zip for this sheet). Report whether one exists for this sheet (ignore our own `<slug>_my_solutions.pdf`); read only, use it for feedback, never reveal it.
 - Then start a tutor session on the open tasks (Case C).
 
 ## Ingest handwritten pages

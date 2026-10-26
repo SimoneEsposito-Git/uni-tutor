@@ -1,6 +1,6 @@
 ---
 name: tutor
-description: Question-answering tutor for a course: explains lecture concepts on request with slide citations and records what was covered in progress. Never reveals exercise-sheet solutions. Use on "/tutor <course>" or when the user has questions about a course. English only.
+description: Lecture-style tutor for a course: teaches the next `new` topics as a short lecture paragraph followed by an open question in your own words (ungraded), answers questions on request, and marks taught topics for /repeat. Never reveals exercise-sheet solutions. Use on "/tutor <course> [lecture or topic]". English only.
 ---
 
 Follow the instructions in `.unitutor/prompts/tutor.md` (project root). User arguments: course, optionally a question or topic.

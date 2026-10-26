@@ -137,7 +137,7 @@ def find_topic(rows: list, topic: str) -> dict:
 
 
 def cmd_grade(a):
-    """Review ladder from AGENTS.md. Promotion only on/after Due; first-time learning caps at ok."""
+    """Review ladder from AGENTS.md. pass promotes (only on/after Due; first-time learning caps at ok), partial = one tier down (new/repeat -> ok), fail = repeat."""
     course = find_course(a.course)
     rows = read_rows(course)
     r = find_topic(rows, a.topic)
@@ -154,12 +154,12 @@ def cmd_grade(a):
             r["status"] = TIERS[min(TIERS.index(old) + 1, len(TIERS) - 1)]
         if old == "new" or on_time:
             r["due"] = (TODAY + dt.timedelta(INTERVAL[r["status"]])).isoformat()
-    elif a.result == "partial":
-        r["status"] = "repeat" if old in ("new", "repeat") else old
-        r["due"] = (TODAY + dt.timedelta(0 if old == "new" else 1)).isoformat()
-    else:  # fail
-        r["status"] = "ok" if old in ("strong", "solid") else "repeat"
-        r["due"] = (TODAY + dt.timedelta(INTERVAL[r["status"]])).isoformat()
+    elif a.result == "partial":  # needed one small hint/nudge: one tier down; new/repeat -> ok (repeat = retry later this session only)
+        r["status"] = "ok" if old in ("new", "repeat") else TIERS[TIERS.index(old) - 1]
+        r["due"] = (TODAY + dt.timedelta(max(1, INTERVAL[r["status"]]))).isoformat()
+    else:  # fail: several follow-ups, slides/notes needed, or wrong: back to repeat
+        r["status"] = "repeat"
+        r["due"] = TODAY.isoformat()
     r["seen"] = TODAY.isoformat()
     if a.note:
         r["notes"] = a.note

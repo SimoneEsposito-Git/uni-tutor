@@ -3,8 +3,9 @@
 
 Usage: solve_build.py <sheet_dir> [--export DIR]
 
+Course defaults: <course>/.tutor/solve_meta.json (e.g. header_info) fill keys missing in meta.json.
 <sheet_dir> (generated/solve/<slug>/) holds:
-  meta.json          course, sheet, slug, header_info[optional lines under the title], exercises[{n,title,points,tasks}], selected{n:[task letters]}
+  meta.json          course, sheet, slug, solutions_name[optional: file name of the solutions PDF instead of <slug>_my_solutions], header_info[optional lines under the title], exercises[{n,title,points,tasks}], selected{n:[task letters]}
   tasks/ex<n>.tex    exercise intro, before its tasks (may be empty)
   tasks/ex<n><x>.tex statement of task x (exercises without lettered tasks: only ex<n>.tex)
   sol/<n><x>.tex     solution of task x (no lettered tasks: sol/<n>.tex), body of a solution env
@@ -80,12 +81,24 @@ def main():
     d = Path(args[0]).resolve()
     export = Path(args[args.index("--export") + 1]).expanduser() if "--export" in args else None
     meta = json.loads((d / "meta.json").read_text(encoding="utf-8"))
+    course_meta = d.parents[2] / ".tutor" / "solve_meta.json"  # per-course defaults, e.g. header_info
+    if course_meta.exists():
+        for k, v in json.loads(course_meta.read_text(encoding="utf-8")).items():
+            meta.setdefault(k, v)
     pre = PREAMBLE.read_text(encoding="utf-8")
     made = []
     for solutions, suffix in ((False, "worksheet"), (True, "my_solutions")):
         body = build_doc(meta, d, solutions)
         tex = f"{pre}\n\\begin{{document}}\n{body}\n\\end{{document}}\n"
         made.append(compile_pdf(tex, f"{meta['slug']}_{suffix}", d))
+    if meta.get("solutions_name"):  # optional custom file name, e.g. "sheet02-backpropagation-solutions"
+        final = d / f"{meta['solutions_name']}.pdf"
+        made[1].replace(final)
+        made[1] = final
+    sol_dir = d.parents[2] / "solutions"  # <course>/solutions/ (d = <course>/generated/solve/<slug>)
+    sol_dir.mkdir(exist_ok=True)
+    shutil.copy(made[1], sol_dir / made[1].name)
+    print(f"saved {made[1].name} -> {sol_dir}")
     if export:
         export.mkdir(parents=True, exist_ok=True)
         for m in made:

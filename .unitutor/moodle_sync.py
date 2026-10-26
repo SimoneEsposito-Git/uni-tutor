@@ -209,9 +209,12 @@ def sync_course(page, ctx, c):
                      .map(a => ({href: a.href, text: a.innerText}))
         }))""")
     new, done = [], set()
+    skip = c.get("skip_folders")  # per-course regex on folder labels that are organised by hand (e.g. literature/)
     for it in items:
         for l in it["links"]:
             href, label = l["href"], l["text"]
+            if skip and "/mod/folder/" in href and re.search(skip, label, re.I):
+                continue
             if "/mod/url/" in href:
                 if href not in done:
                     done.add(href)
