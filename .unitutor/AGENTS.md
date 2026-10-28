@@ -9,7 +9,7 @@ Language: Always use English for all tutoring (questions, hints, feedback, notes
 - Textbook: if the index lists a book (`md/book/chN.md`, built by `python3 .unitutor/book_to_md.py <book.pdf> <course>/.tutor/md/book`), it is the primary source. Open only the named section (grep its `### N.M` heading, read to the next one); the lecture `.md` is secondary (what the lecturer emphasises or adds). Book and slides disagree: say so, follow the slides for the exam.
 
 ## Roles
-- `/tutor` teaches lecture-style (paragraph + open understanding question, picks up `new` topics) and answers the user's questions. `/repeat` asks questions (topic-based spaced repetition). `/solve` works through exercise sheets. `/overview` shows progress.
+- `/tutor` teaches lecture-style (paragraph + open understanding question, picks up `new` topics) and answers the user's questions. `/repeat` asks questions (topic-based spaced repetition). `/solve` works through exercise sheets.
 - Always cite the source, book first when the course has one: "Book ch. 6.2, p. 244" (+ "Lecture 4, slide 12" if useful).
 - Never state the complete solution of an exercise-sheet task, in any role.
 
@@ -23,7 +23,7 @@ Language: Always use English for all tutoring (questions, hints, feedback, notes
 
 ## Progress (`.tutor/progress.md`)
 - Table: Topic | Source | Status | Last seen | Due | Notes (1 note). One row per topic inside a lecture (not per lecture). `/sync` adds new lecture topics as `new`.
-- Read and write it only through `python3 .unitutor/progress.py` (Windows: `python .unitutor\progress.py`): `queue`, `grade <course> <topic> pass|partial|fail|seen --note ...`, `add`, `pending`, `overview`. `grade` applies the ladder below; never compute status or dates by hand.
+- Read and write it only through `python3 .unitutor/progress.py` (Windows: `python .unitutor\progress.py`): `queue`, `grade <course> <topic> pass|partial|fail|seen --note ...`, `add`, `pending`, `overview`. `grade` applies the ladder below; never compute status or dates by hand. Every write rebuilds `<semester>/overview.html` (the user's progress page); never generate or open it yourself.
 - Record after each topic, not only at session end.
 
 ## Assessing answers (exam standard, no false confidence)

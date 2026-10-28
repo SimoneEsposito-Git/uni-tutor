@@ -15,4 +15,4 @@ Manual course sync (Moodle) with a change summary, then new lecture topics go in
    - Table: Course | New/changed file | Folder | Markdown ready (yes/no) | Topics added
    - Todoist: N new tasks
    - Courses with no changes, in one line.
-7. If no course changed and nothing was pending, say "No changes" plus the Todoist count. Suggest `/repeat` (or `/overview`) only if topics were added.
+7. If no course changed and nothing was pending, say "No changes" plus the Todoist count. Suggest `/repeat` only if topics were added.

@@ -2,7 +2,7 @@
 
 Dieses Projekt verwandelt deinen Studienordner in ein automatisiertes Lernsystem – für jede Hochschule mit **Moodle** (z. B. ISIS an der TU Berlin), auf **macOS, Windows und Linux**:
 1. **Automatischer Kurs-Sync (`.unitutor/`)**: Lädt täglich neue Vorlesungsfolien, Übungsblätter, Vorlesungsvideos und Infos aus Moodle herunter – auch Dateien hinter Unterseiten (Textseiten, Links, Video-Sammlungen, Jupyter-Book-Übungen). Sortiert sie in die richtige Ordnerstruktur, schützt Originaldateien vor versehentlichem Überschreiben (schreibgeschützt) und wandelt PDFs und Notebooks in kompakte Markdown-Dateien (`.tutor/md/`) um, damit KI-Modelle sie token-sparend lesen können. Optional werden Abgabefristen nach **Todoist** synchronisiert. Funktioniert mit dem normalen Moodle-Login und mit Uni-SSO (Shibboleth o. Ä.).
-2. **Sokratischer KI-Tutor & Aufgabengenerator**: Vorkonfigurierte Regeln ([AGENTS.md](../.unitutor/AGENTS.md)) und Slash-Befehle (`/setup`, `/tutor`, `/repeat`, `/overview`, `/solve`, `/anki`, `/make-exercises`, `/sync`) für **Claude Code**, **Google Antigravity** und **OpenAI Codex**. `/tutor` beantwortet deine Fragen zum Stoff mit exakten Folien-Zitaten, `/repeat` fragt dich wie Anki ab – aber pro Thema statt pro Karte, mit jedes Mal neu formulierten Fragen. `/sync` zerlegt neue Vorlesungen automatisch in einzelne Themen, `/overview` zeigt deinen Lernstand pro Kurs als Diagramm (rot = neu, blau = in Arbeit, grün = sitzt). Lösungen von Übungsblättern werden nie direkt verraten; der Lernstand liegt in `.tutor/progress.md`.
+2. **Sokratischer KI-Tutor & Aufgabengenerator**: Vorkonfigurierte Regeln ([AGENTS.md](../.unitutor/AGENTS.md)) und Slash-Befehle (`/setup`, `/tutor`, `/repeat`, `/solve`, `/anki`, `/make-exercises`, `/sync`) für **Claude Code**, **Google Antigravity** und **OpenAI Codex**. `/tutor` beantwortet deine Fragen zum Stoff mit exakten Folien-Zitaten, `/repeat` fragt dich wie Anki ab – aber pro Thema statt pro Karte, mit jedes Mal neu formulierten Fragen. `/sync` zerlegt neue Vorlesungen automatisch in einzelne Themen, Die Seite `Semester 1/overview.html` zeigt deinen Lernstand pro Kurs als Diagramm (rot = neu, blau = in Arbeit, grün = sitzt) und aktualisiert sich bei jedem Fortschritt automatisch. Lösungen von Übungsblättern werden nie direkt verraten; der Lernstand liegt in `.tutor/progress.md`.
 
 ---
 
@@ -99,7 +99,7 @@ Du kannst das Projekt wahlweise mit **Claude Code**, **Google Antigravity** oder
 
 | Tool | Regeln (`.unitutor/AGENTS.md`) | Befehle |
 |---|---|---|
-| Claude Code | immer, über `.claude/CLAUDE.md` | `/setup`, `/tutor`, `/repeat`, `/overview`, `/solve`, `/anki`, `/make-exercises`, `/sync`, `/end` aus `.claude/skills/` |
+| Claude Code | immer, über `.claude/CLAUDE.md` | `/setup`, `/tutor`, `/repeat`, `/solve`, `/anki`, `/make-exercises`, `/sync`, `/end` aus `.claude/skills/` |
 | Antigravity | immer, über `.agents/rules/` | Skills aus `.agents/skills/` |
 | Codex | nur beim Aufruf eines Skills* | `$tutor`, `$repeat`, … aus `.agents/skills/` |
 
