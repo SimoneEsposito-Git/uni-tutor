@@ -198,7 +198,7 @@ def sync_course(page, ctx, c):
     for d in ("lectures", "exercises", "info", "solutions", "generated", ".tutor"):
         (course_dir / d).mkdir(parents=True, exist_ok=True)
     prog = course_dir / ".tutor" / "progress.md"
-    if not prog.exists():
+    if not prog.exists() and not (prog.parent / "untracked").exists():
         prog.write_text("| Topic | Source | Status | Last seen | Due | Notes |\n|---|---|---|---|---|---|\n", encoding="utf-8")
 
     page.goto(f"{BASE}/course/view.php?id={c['id']}", wait_until="domcontentloaded")

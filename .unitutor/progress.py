@@ -24,8 +24,8 @@ WIDGET_DIR = Path.home() / "Library/Mobile Documents/com~apple~CloudDocs/Unituto
 
 
 def courses() -> dict:
-    """Course name -> course folder (every `<semester>/<course>/` with a `.tutor/`)."""
-    return {p.parent.name: p.parent for p in sorted(ROOT.glob("*/*/.tutor")) if p.is_dir()}
+    """Course name -> course folder (every `<semester>/<course>/` with a `.tutor/`, unless it holds an `untracked` marker file)."""
+    return {p.parent.name: p.parent for p in sorted(ROOT.glob("*/*/.tutor")) if p.is_dir() and not (p / "untracked").exists()}
 
 
 def find_course(name: str) -> Path:
