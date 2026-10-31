@@ -13,3 +13,7 @@ calendar.ics
 sync.log
 *.part
 solve/settings.json
+
+# macOS widget build output
+widget/mac/*.xcodeproj/
+widget/mac/build/

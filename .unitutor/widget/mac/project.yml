@@ -1,0 +1,42 @@
+# Generate the Xcode project with:  xcodegen generate   (then open Unitutor.xcodeproj)
+name: Unitutor
+options:
+  bundleIdPrefix: com.unitutor
+  deploymentTarget:
+    macOS: "14.0"
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    CODE_SIGN_STYLE: Automatic
+    MARKETING_VERSION: "1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    # DEVELOPMENT_TEAM: set your Team in Xcode (Signing & Capabilities) after generating, or put its ID here
+targets:
+  Unitutor:
+    type: application
+    platform: macOS
+    sources: [App]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.unitutor.progress
+        CODE_SIGN_ENTITLEMENTS: App/App.entitlements
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.education
+    dependencies:
+      - target: UnitutorWidget
+  UnitutorWidget:
+    type: app-extension
+    platform: macOS
+    sources: [Widget]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.unitutor.progress.widget
+        PRODUCT_NAME: UnitutorWidget
+        CODE_SIGN_ENTITLEMENTS: Widget/Widget.entitlements
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_CFBundleDisplayName: Unitutor
+    info:
+      path: Widget/Info.plist
+      properties:
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension

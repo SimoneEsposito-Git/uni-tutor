@@ -4,7 +4,7 @@
   python3 progress.py pending                         # lecture .md files not yet split into topics (not in index.md)
   python3 progress.py add <course>                    # stdin lines "Topic | Source" -> new rows with status `new`
   python3 progress.py queue [course] [--max 8] [--new 3]   # /repeat queue: due reviews + a few new topics
-  python3 progress.py grade <course> <topic> pass|partial|fail|seen [--note "..."]   # applies the review ladder
+  python3 progress.py grade <course> <topic> pass|partial|fail|seen [--note "..."] [--by teammate]   # applies the review ladder; --by teammate (exercise solved by someone else) never changes status
   python3 progress.py overview [--open]               # rebuilds <semester>/overview.html, prints a one-line summary per course
 (every write to a progress.md rebuilds its semester's overview.html automatically)
 """
@@ -145,6 +145,11 @@ def cmd_grade(a):
     course = find_course(a.course)
     rows = read_rows(course)
     r = find_topic(rows, a.topic)
+    if a.by == "teammate":  # a teammate's solution is not the user's own work: no status/date change
+        r["notes"] = "Teammate's solution, not own work" + (f"; {a.note}" if a.note else "")
+        write_rows(course, rows)
+        print(f"{course.name} | {r['topic']}: unchanged ({r['status']}), recorded as teammate's solution")
+        return
     old = r["status"] if r["status"] in TIERS + ["new"] else "repeat"
     due = date(r["due"])
     on_time = due is None or due <= TODAY
@@ -304,7 +309,7 @@ def main():
     sub.add_parser("pending")
     s = sub.add_parser("add"); s.add_argument("course")
     s = sub.add_parser("queue"); s.add_argument("course", nargs="?"); s.add_argument("--max", type=int, default=8); s.add_argument("--new", type=int, default=3)
-    s = sub.add_parser("grade"); s.add_argument("course"); s.add_argument("topic"); s.add_argument("result", choices=["pass", "partial", "fail", "seen"]); s.add_argument("--note")
+    s = sub.add_parser("grade"); s.add_argument("course"); s.add_argument("topic"); s.add_argument("result", choices=["pass", "partial", "fail", "seen"]); s.add_argument("--note"); s.add_argument("--by", choices=["own", "teammate"], default="own")
     s = sub.add_parser("overview"); s.add_argument("--open", action="store_true")
     a = p.parse_args()
     if sys.platform == "win32":

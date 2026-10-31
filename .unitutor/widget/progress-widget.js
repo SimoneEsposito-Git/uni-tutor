@@ -73,29 +73,41 @@ if (fam === "small") {
   row.addSpacer(); w.addSpacer(4)
   txt(w, `${sum.known} known · ${sum.learning} learning · ${sum.new} new`, 9, C.mute)
 } else {
-  const cap = fam === "large" ? 7 : 3, shown = rows.slice(0, cap)
+  const large = fam === "large", cap = large ? 7 : 8, shown = rows.slice(0, cap)
   const top = w.addStack(); top.centerAlignContent()
-  txt(top, course ? course.course : "Study progress", fam === "large" ? 15 : 13, C.fg, true)
+  txt(top, course ? course.course : "Study progress", large ? 15 : 13, C.fg, true)
   top.addSpacer(); txt(top, dueTxt, 11, dueCol, true)
-  w.addSpacer(10)
+  w.addSpacer(8)
   const main = w.addStack(); main.topAlignContent(); main.spacing = 14
   const left = main.addStack(); left.layoutVertically()
-  left.addImage(donut(sum, 240)).imageSize = new Size(fam === "large" ? 110 : 70, fam === "large" ? 110 : 70)
+  const dsz = large ? 110 : 52
+  left.addImage(donut(sum, 240)).imageSize = new Size(dsz, dsz)
   left.addSpacer(4)
-  txt(left, course ? `All lectures` : "All courses", 11, C.fg, true)
-  if (fam === "large") txt(left, `${sum.new + sum.learning + sum.known} topics`, 10, C.mute)
-  const right = main.addStack(); right.layoutVertically(); right.spacing = fam === "large" ? 8 : 6
-  for (const c of shown) {
-    const r = right.addStack(); r.centerAlignContent(); r.spacing = 7
-    const sz = fam === "large" ? 26 : 20
-    r.addImage(donut(c, 80)).imageSize = new Size(sz, sz)
-    const col = r.addStack(); col.layoutVertically()
-    txt(col, nameOf(c), fam === "large" ? 12 : 10.5, C.fg)
-    txt(col, c.due ? `${c.due} due · ${c.known}/${c.topics} known` : `${c.known}/${c.topics} known`, 9, c.due ? C.new : C.mute)
+  txt(left, course ? "All lectures" : "All courses", 11, C.fg, true)
+  txt(left, `${sum.due} due · ${sum.known}/${sum.new + sum.learning + sum.known}`, 9, sum.due ? C.new : C.mute)
+  const right = main.addStack(); right.layoutVertically(); right.spacing = large ? 8 : 4
+  if (large) {  // one column, two text lines per row
+    for (const c of shown) {
+      const r = right.addStack(); r.centerAlignContent(); r.spacing = 7
+      r.addImage(donut(c, 80)).imageSize = new Size(26, 26)
+      const col = r.addStack(); col.layoutVertically()
+      txt(col, nameOf(c), 12, C.fg)
+      txt(col, c.due ? `${c.due} due · ${c.known}/${c.topics} known` : `${c.known}/${c.topics} known`, 9, c.due ? C.new : C.mute)
+    }
+  } else {  // medium: 4 rows x 2 columns, name only (red = something is due)
+    for (let i = 0; i < shown.length; i += 2) {
+      const line = right.addStack(); line.spacing = 10
+      for (const c of shown.slice(i, i + 2)) {
+        const cell = line.addStack(); cell.centerAlignContent(); cell.spacing = 6
+        cell.size = new Size(104, 16)
+        cell.addImage(donut(c, 64)).imageSize = new Size(16, 16)
+        txt(cell, nameOf(c), 10.5, c.due ? C.new : C.fg).minimumScaleFactor = 0.85
+      }
+    }
   }
-  if (rows.length > cap) txt(right, `+${rows.length - cap} more ${unit}`, 9, C.mute)
   w.addSpacer()
-  if (fam === "large") txt(w, `Updated ${d.updated}`, 8, C.mute)
+  if (rows.length > cap) txt(w, `+${rows.length - cap} more ${unit}`, 9, C.mute)
+  else if (large) txt(w, `Updated ${d.updated}`, 8, C.mute)
 }
 
 if (config.runsInWidget) Script.setWidget(w); else await w.presentMedium()

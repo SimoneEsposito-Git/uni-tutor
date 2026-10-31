@@ -22,6 +22,9 @@ Ask these two questions, one at a time, in the user's own words, after the first
 2. `create`: ask where it should be located (suggest a folder inside a location that is already synced to their tablet; the project folder is fine if it is synced or they sync it manually), then create it. `existing`: ask for its path and check that it exists. `none`: skip.
 Save `{"tablet_folder": "<absolute path>" | null, "mode": "create|existing|none"}` to `.unitutor/solve/settings.json` and use it from then on. Never ask again unless the user asks to change it (then overwrite the file). Do not commit this file.
 
+## Sheet rows
+After creating a sheet (Case A), add one `progress.md` row per exercise (`python3 .unitutor/progress.py add <course>`, line `<title> (Sheet N Ex k) | Sheet N Ex k`) if missing.
+
 ## Case B: work dir exists -> never recreate
 - Read `meta.json`; list status per task (solved = `sol/<id>.tex` exists, else open). New tasks requested: add them to `selected` + `tasks/`, rebuild, re-export.
 - Always, before tutoring, run these checks and report the result in one line each (do not skip, do not just list the folder):
@@ -42,4 +45,4 @@ User gives answers in words/rough maths; typeset them into `sol/<id>.tex`, rebui
 ## Tutoring (rules in `.unitutor/AGENTS.md` apply)
 - Never state a solution; one guiding question per reply; hint levels; cite sources.
 - Feedback on a transcribed solution: compare with `solutions/` if present (read only), point at the faulty step with a question, do not correct it for them. Typeset the solution as the user wrote it; fixes go in only after the user gives them.
-- Update `.tutor/progress.md` as usual after each topic (ladder in `AGENTS.md`).
+- Update `.tutor/progress.md` as usual after each topic (ladder in `AGENTS.md`). Exercises have their own rows (`Sheet N Ex k`): when ingesting solutions for a group sheet, ask per exercise whether the solution is the user's or a teammate's; teammate's -> `grade ... seen --by teammate`, no promotion.

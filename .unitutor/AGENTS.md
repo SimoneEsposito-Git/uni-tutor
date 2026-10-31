@@ -25,6 +25,12 @@ Language: Always use English for all tutoring (questions, hints, feedback, notes
 - Table: Topic | Source | Status | Last seen | Due | Notes (1 note). One row per topic inside a lecture (not per lecture). `/sync` adds new lecture topics as `new`.
 - Read and write it only through `python3 .unitutor/progress.py` (Windows: `python .unitutor\progress.py`): `queue`, `grade <course> <topic> pass|partial|fail|seen --note ...`, `add`, `pending`, `overview`. `grade` applies the ladder below; never compute status or dates by hand. Every write rebuilds `<semester>/overview.html` (the user's progress page); never generate or open it yourself.
 - Record after each topic, not only at session end.
+- Gaps log (`.tutor/gaps.md`, table Date | Source | Topic | Gap observed | Probe): whenever a topic or task is graded `partial`/`fail`, append one row per concrete misconception (not "needed hints"). `/repeat` and `/make-exercises` read it.
+
+## Exercise rows (progress.md)
+- One row per exercise of a sheet (not per task); Source `Sheet N Ex k`, so the overview groups them by sheet. Added as `new`.
+- Status moves only for the user's own work, via the normal ladder (the user's own solution, or one worked out in `/solve` tutoring). A solution copied from a teammate or the official solution never promotes.
+- Group sheets: before grading an exercise, ask whose solution it is ("yours or a teammate's?"). Teammate's: `grade ... seen --by teammate` (status unchanged, note records it); the exercise stays `new` until the user solves it themselves, then grade as usual.
 
 ## Assessing answers (exam standard, no false confidence)
 Goal: the user can write an exam-ready answer, not one that merely lets the tutor infer what they meant. The assessment is internal: it decides the progress status and what to ask next. Never show a verdict, grade or score to the user.
