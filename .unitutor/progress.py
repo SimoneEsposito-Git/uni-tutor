@@ -3,12 +3,14 @@
 
   python3 progress.py pending                         # lecture .md files not yet split into topics (not in index.md)
   python3 progress.py add <course>                    # stdin lines "Topic | Source" -> new rows with status `new`
-  python3 progress.py queue [course] [--max 8] [--new 3]   # /repeat queue: due reviews + a few new topics
+  python3 progress.py queue [course] [--max 8] [--new 0]   # /repeat queue: due reviews + a few new topics
   python3 progress.py grade <course> <topic> pass|partial|fail|seen [--note "..."] [--by teammate]   # applies the review ladder; --by teammate (exercise solved by someone else) never changes status
+  python3 progress.py plan <hours> [--now "YYYY-MM-DD HH:MM"]   # /study: block plan for ONE session (priorities from schedule.json)
+  python3 progress.py mark start|end                  # timing log (timing.log): session start/end; every grade also logs one event, `plan` learns minutes per topic from the gaps
   python3 progress.py overview [--open]               # rebuilds <semester>/overview.html, prints a one-line summary per course
 (every write to a progress.md rebuilds its semester's overview.html automatically)
 """
-import argparse, datetime as dt, html, json, re, sys, webbrowser
+import argparse, datetime as dt, html, json, re, statistics, subprocess, sys, webbrowser
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -19,7 +21,15 @@ TIERS = ["repeat", "ok", "good", "strong", "solid"]
 INTERVAL = {"repeat": 0, "ok": 1, "good": 3, "strong": 7, "solid": 21}  # days until Due
 GROUP = {"new": "new", "repeat": "learning", "ok": "learning", "good": "learning", "strong": "known", "solid": "known"}
 NONE = "—"
+SCHEDULE = HERE / "schedule.json"  # weekly timetable per course folder, see schedule.example.json
+TUTOR_MIN, REVIEW_MIN = 8, 4  # estimated minutes per taught topic / per review question
+TUTOR_BLOCK, REVIEW_BLOCK = 30, 20  # minutes per block; blocks alternate so one session mixes both
+TIMING = HERE / "timing.log"  # TSV: iso time, kind (start|end|tutor|review), course, topic, result (seen|pass|partial|fail); personal, gitignored
+BREAK_MIN, MIN_COURSE, MIN_ALL = 25, 8, 10  # gaps above BREAK_MIN are breaks; samples needed for per-course / overall medians
+GATE = {4: 3, 5: 4}  # plan category -> higher-priority category that must be empty before it is used
+DAYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
 LOCAL_WIDGET_DIR = Path.home() / "Library/Application Support/Unitutor"  # not TCC-protected: read by the Übersicht desktop widget
+MAC_WIDGET_APP = Path.home() / "Applications/Unitutor.app"  # host app of the WidgetKit widget (widget/mac); `--reload` makes it refresh the widget and quit
 WIDGET_DIR = Path.home() / "Library/Mobile Documents/com~apple~CloudDocs/Unitutor"  # synced to the phone; read by widget/progress-widget.js
 
 
@@ -132,6 +142,201 @@ def cmd_queue(a):
         print(f"Nothing due. Next: {nxt['course']} | {nxt['topic']} on {nxt['due']}" if nxt else "Nothing due and no topics tracked.")
 
 
+def slots(entries) -> list:
+    """['Thu 16:15-17:45'] -> [(weekday 0-6, start time, end time)]"""
+    out = []
+    for e in entries or []:
+        m = re.match(r"(\w{3})\w*\s+(\d{1,2}):(\d{2})\s*-\s*(\d{1,2}):(\d{2})", e)
+        if m and m[1].lower() in DAYS:
+            out.append((DAYS.index(m[1].lower()), dt.time(int(m[2]), int(m[3])), dt.time(int(m[4]), int(m[5]))))
+    return out
+
+
+def added(path: Path) -> dt.date:
+    st = path.stat()
+    return dt.date.fromtimestamp(getattr(st, "st_birthtime", st.st_mtime))
+
+
+def lecture_dates(course: Path, cfg: dict) -> dict:
+    """Lecture number -> date held. Filename date if plausible, else the latest lecture slot on/before the day the file
+    was added (no slot: the add date); non-dated lectures are kept one week apart; `lecture_dates` in schedule.json wins."""
+    index = course / ".tutor" / "index.md"
+    stems = {m[1]: int(m[2]) for m in re.finditer(r"`md/(.+?)\.md`: Lecture (\d+)", index.read_text(encoding="utf-8"))} if index.exists() else {}
+    weekdays = [s[0] for s in slots(cfg.get("lecture"))]
+    dates, fixed = {}, set()
+    for f in sorted((course / "lectures").glob("*")):
+        n = stems.get(f.stem)
+        if n is None or f.suffix.lower() not in (".pdf", ".ipynb"):
+            continue
+        a, d = added(f), None
+        m = re.match(r"(?:20)?(\d{2})_?(\d{2})_?(\d{2})_", f.name)
+        if m:
+            try:
+                d = dt.date(2000 + int(m[1]), int(m[2]), int(m[3]))
+            except ValueError:
+                d = None
+            if d and abs((d - a).days) > 21:
+                d = None
+        if d:
+            fixed.add(n)
+        else:
+            d = a
+            while weekdays and d.weekday() not in weekdays:
+                d -= dt.timedelta(1)
+        dates[n] = d
+    for k, v in (cfg.get("lecture_dates") or {}).items():
+        dates[int(k)] = dt.date.fromisoformat(v)
+        fixed.add(int(k))
+    for n in sorted(dates, reverse=True):
+        if n + 1 in dates and n not in fixed:
+            dates[n] = min(dates[n], dates[n + 1] - dt.timedelta(7))
+    return dates
+
+
+def tutorial_after(cfg: dict, d: dt.date):
+    """First tutorial slot after the lecture held on day d (the tutorial covers the lecture before it)."""
+    ends = {w: e for w, _, e in slots(cfg.get("lecture"))}
+    start = dt.datetime.combine(d, ends.get(d.weekday(), dt.time(23, 59)))
+    best = None
+    for off in range(15):
+        day = d + dt.timedelta(off)
+        for w, s, _ in slots(cfg.get("tutorial")):
+            t = dt.datetime.combine(day, s)
+            if w == day.weekday() and t > start and (best is None or t < best):
+                best = t
+        if best:
+            break
+    return best
+
+
+def cmd_plan(a):
+    """One study session: alternating tutor/repeat blocks. Priorities: 0 new topics of a lecture whose tutorial starts within 24 h (jumps the queue), 1 new topics of lectures from previous weeks,
+    2 new topics of lectures whose tutorial is still ahead (soonest first), 3 due reviews of previous-week lectures,
+    4 other new topics of this week, 5 due reviews of this week. Within a type, strict priority; 4 waits for 3, 5 for 4."""
+    now = dt.datetime.strptime(a.now, "%Y-%m-%d %H:%M") if a.now else dt.datetime.now()
+    today = now.date()
+    week = today - dt.timedelta(today.weekday())
+    sched = json.loads(SCHEDULE.read_text(encoding="utf-8")) if SCHEDULE.exists() else {}
+    if not sched:
+        print("No schedule.json: copy schedule.example.json and fill in the timetable. Planning without tutorial deadlines.")
+    q = {c: [] for c in range(0, 6)}
+    seen_dates = {}
+    for name, course in courses().items():
+        cfg = sched.get(name, {})
+        dates = lecture_dates(course, cfg)
+        seen_dates[name] = dates
+        for r in read_rows(course):
+            m = re.search(r"Lecture\s+(\d+)", r["source"])
+            n = int(m[1]) if m else None
+            d = dates.get(n)
+            prev = d is None or d < week
+            tut = tutorial_after(cfg, d) if d else None
+            item = dict(r, course=name, lecture=n, ldate=d, tutorial=tut)
+            if r["status"] == "new" and r["source"].lower().startswith("lecture"):
+                soon = tut and now < tut <= now + dt.timedelta(hours=24)
+                q[0 if soon else 1 if prev else 2 if tut and tut > now else 4].append(item)
+            elif r["status"] in TIERS and date(r["due"]) and date(r["due"]) <= today:
+                q[3 if prev else 5].append(item)
+    low = dt.date.min
+    q[0].sort(key=lambda r: (r["tutorial"], r["course"], order_key(r["source"])))
+    q[1].sort(key=lambda r: (r["ldate"] or low, r["course"], r["lecture"] or 0, order_key(r["source"])))
+    q[2].sort(key=lambda r: (r["tutorial"], r["course"], order_key(r["source"])))
+    q[4].sort(key=lambda r: (r["ldate"] or low, r["course"], order_key(r["source"])))
+    for c in (3, 5):
+        by_course = {}
+        for r in sorted(q[c], key=lambda r: r["due"]):
+            by_course.setdefault(r["course"], []).append(r)
+        q[c] = interleave(list(by_course.values()))
+    left, blocks, i, stalls = int(a.hours * 60), [], 0, 0
+
+    est, n_obs = estimator()
+
+    def take(cats, tutor, cap):
+        out, used = [], 0.0
+        for c in cats:
+            if c in GATE and q[GATE[c]]:
+                continue
+            while q[c]:
+                m = max(1.0, est(q[c][0]["course"], "tutor" if tutor else "review", TUTOR_MIN if tutor else REVIEW_MIN))
+                if left - used < m or (out and used + m > cap):
+                    break
+                out.append(dict(q[c].pop(0), cat=c, min=m))
+                used += m
+        return out
+
+    while left >= 2 and stalls < 2:
+        tutor = i % 2 == 0
+        i += 1
+        items = take((0, 1, 2, 4), True, TUTOR_BLOCK) if tutor else take((3, 5), False, REVIEW_BLOCK)
+        if items:
+            blocks.append(("TUTOR" if tutor else "REPEAT", items))
+            left -= sum(r["min"] for r in items)
+            stalls = 0
+        else:
+            stalls += 1
+    total = sum(len(b[1]) for b in blocks)
+    print(f"Session {a.hours:g} h, now {now:%a %Y-%m-%d %H:%M}; {len(blocks)} blocks, {total} items "
+          + (f"(minutes from your timing log, {n_obs} samples; defaults {TUTOR_MIN}/{REVIEW_MIN} min until enough)" if n_obs
+             else f"(est. {TUTOR_MIN} min/topic taught, {REVIEW_MIN} min/review; timing log still empty)"))
+    why = {0: "tutorial within 24 h", 1: "lecture from a previous week", 2: "lecture before its tutorial", 3: "review, previous-week lecture",
+           4: "lecture from this week", 5: "review, this week"}
+    k, last = 0, None
+    for b, (kind, items) in enumerate(blocks, 1):
+        print(f"\nBlock {b} - {kind} - ~{sum(r['min'] for r in items):.0f} min")
+        for r in items:
+            head = (r["course"], r["lecture"], r["cat"])
+            if kind == "TUTOR" and head != last:
+                day = f"{r['ldate']:%a %Y-%m-%d}" if r["ldate"] else "date unknown"
+                tut = f"; tutorial {r['tutorial']:%a %H:%M}" if r["cat"] in (0, 2) else ""
+                print(f"  {r['course']}, Lecture {r['lecture']} ({day}) [rule {r['cat']}: {why[r['cat']]}{tut}]")
+            last = head
+            k += 1
+            extra = f" | due {r['due']}, {r['status']} | note: {r['notes']}" if kind == "REPEAT" else ""
+            print(f"  {k}. {r['course']} | {r['topic']} | {r['source']}{extra}")
+    rest = {c: len(v) for c, v in q.items() if v}
+    print("\nNot scheduled (rule: count): " + (", ".join(f"{c}: {n}" for c, n in rest.items()) or "none"))
+    print("Lecture dates used: " + "; ".join(f"{n}: " + ", ".join(f"L{k} {d:%a %m-%d}" for k, d in sorted(ds.items())) for n, ds in seen_dates.items() if ds))
+
+
+def log_event(kind: str, course: str = "", topic: str = "", result: str = ""):
+    with TIMING.open("a", encoding="utf-8") as f:
+        f.write(f"{dt.datetime.now().isoformat(timespec='seconds')}\t{kind}\t{course}\t{topic.replace(chr(9), ' ')}\t{result}\n")
+
+
+def durations() -> list:
+    """[(course, 'tutor'|'review', minutes)]: gap between a topic's grade event and the event before it, breaks and bulk grading dropped."""
+    ev = []
+    for line in TIMING.read_text(encoding="utf-8").splitlines() if TIMING.exists() else []:
+        p = line.split("\t")
+        try:
+            ev.append((dt.datetime.fromisoformat(p[0]), p[1], p[2] if len(p) > 2 else ""))
+        except (ValueError, IndexError):
+            pass
+    ev.sort()
+    out = []
+    for prev, cur in zip(ev, ev[1:]):
+        gap = (cur[0] - prev[0]).total_seconds() / 60
+        if cur[1] in ("tutor", "review") and prev[1] != "end" and 0.3 <= gap <= BREAK_MIN:
+            out.append((cur[2], cur[1], gap))
+    return out
+
+
+def estimator():
+    """(est(course, kind, default) -> minutes, number of samples): per-course median once enough samples, else overall median, else default."""
+    d = durations()
+
+    def est(course, kind, default):
+        own = [m for c, k, m in d if k == kind and c == course]
+        every = [m for c, k, m in d if k == kind]
+        pool = own if len(own) >= MIN_COURSE else every if len(every) >= MIN_ALL else None
+        return statistics.median(pool) if pool else default
+    return est, len(d)
+
+
+def cmd_mark(a):
+    log_event(a.what)
+
+
 def find_topic(rows: list, topic: str) -> dict:
     t = topic.lower().strip()
     hits = [r for r in rows if r["topic"].lower() == t] or [r for r in rows if t in r["topic"].lower()]
@@ -173,6 +378,8 @@ def cmd_grade(a):
     if a.note:
         r["notes"] = a.note
     write_rows(course, rows)
+    if not r["source"].lower().startswith("sheet"):  # exercises are /solve work, not tutor/review time
+        log_event("tutor" if a.result == "seen" else "review", course.name, r["topic"], a.result)
     print(f"{course.name} | {r['topic']}: {old} -> {r['status']}, due {r['due']}")
 
 
@@ -210,12 +417,14 @@ def count(rows: list) -> dict:
     c = {"new": 0, "learning": 0, "known": 0}
     for r in rows:
         c[GROUP.get(r["status"], "learning")] += 1
+    c["repeat"] = sum(1 for r in rows if r["status"] == "repeat")  # subset of "learning"; only the Mac widget shows it separately
     return c
 
 
 def render_overview(semester: Path) -> list:
     """Writes <semester>/overview.html from the progress.md of every course in that semester; returns summary lines."""
     cards, lines, total, due_all, data = [], [], {"new": 0, "learning": 0, "known": 0}, 0, []
+    repeat_all = 0
     for name, d in courses().items():
         if d.parent != semester:
             continue
@@ -231,6 +440,7 @@ def render_overview(semester: Path) -> list:
              **count(rs)} for g, rs in groups.items()]})
         for g in total:
             total[g] += c[g]
+        repeat_all += c["repeat"]
         lines.append(f"{name}: {n} topics | new {c['new']} · learning {c['learning']} · known {c['known']}"
                      + (f" ({round(100 * c['known'] / n)}% known)" if n else ""))
         body = ""
@@ -254,13 +464,15 @@ def render_overview(semester: Path) -> list:
     now = dt.datetime.now().strftime("%Y-%m-%d %H:%M")
     (semester / "overview.html").write_text(
         PAGE.replace("{DATE}", now).replace("{CARDS}", summary + "\n" + "\n".join(cards)), encoding="utf-8")
-    payload = json.dumps({"updated": now, "due": due_all, **total, "courses": data}, ensure_ascii=False)
+    payload = json.dumps({"updated": now, "due": due_all, **total, "repeat": repeat_all, "courses": data}, ensure_ascii=False)
     targets = [WIDGET_DIR] if WIDGET_DIR.parent.is_dir() else []  # iCloud Drive present: feed the phone widget
     if sys.platform == "darwin":
         targets.append(LOCAL_WIDGET_DIR)
     for t in targets:
         t.mkdir(parents=True, exist_ok=True)
         (t / "progress.json").write_text(payload, encoding="utf-8")
+    if MAC_WIDGET_APP.is_dir():  # push: the host app asks WidgetKit to reload the widget now instead of at the next 15-min poll
+        subprocess.run(["open", "-g", "-n", str(MAC_WIDGET_APP), "--args", "--reload"], check=False, capture_output=True)
     return lines
 
 
@@ -308,8 +520,10 @@ def main():
     sub = p.add_subparsers(dest="cmd", required=True)
     sub.add_parser("pending")
     s = sub.add_parser("add"); s.add_argument("course")
-    s = sub.add_parser("queue"); s.add_argument("course", nargs="?"); s.add_argument("--max", type=int, default=8); s.add_argument("--new", type=int, default=3)
+    s = sub.add_parser("queue"); s.add_argument("course", nargs="?"); s.add_argument("--max", type=int, default=8); s.add_argument("--new", type=int, default=0)
     s = sub.add_parser("grade"); s.add_argument("course"); s.add_argument("topic"); s.add_argument("result", choices=["pass", "partial", "fail", "seen"]); s.add_argument("--note"); s.add_argument("--by", choices=["own", "teammate"], default="own")
+    s = sub.add_parser("plan"); s.add_argument("hours", type=float); s.add_argument("--now")
+    s = sub.add_parser("mark"); s.add_argument("what", choices=["start", "end"])
     s = sub.add_parser("overview"); s.add_argument("--open", action="store_true")
     a = p.parse_args()
     if sys.platform == "win32":

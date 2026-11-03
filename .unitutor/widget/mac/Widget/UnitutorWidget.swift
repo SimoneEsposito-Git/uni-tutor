@@ -7,12 +7,14 @@ import WidgetKit
 struct Lecture: Decodable, Identifiable {
     var name: String
     var topics: Int, due: Int, new: Int, learning: Int, known: Int
+    var `repeat`: Int? = nil   // subset of `learning` (status repeat); absent in older progress.json
     var id: String { name }
 }
 
 struct Course: Decodable, Identifiable {
     var course: String
     var topics: Int, due: Int, new: Int, learning: Int, known: Int
+    var `repeat`: Int? = nil
     var lectures: [Lecture]
     var id: String { course }
 }
@@ -20,6 +22,7 @@ struct Course: Decodable, Identifiable {
 struct Progress: Decodable {
     var updated: String
     var due: Int, new: Int, learning: Int, known: Int
+    var `repeat`: Int? = nil
     var courses: [Course]
     var topics: Int { new + learning + known }
 
@@ -62,7 +65,7 @@ struct CourseIntent: WidgetConfigurationIntent {
 
 struct RowData: Identifiable {
     let name: String
-    let topics: Int, due: Int, new: Int, learning: Int, known: Int
+    let topics: Int, due: Int, new: Int, learning: Int, known: Int, rep: Int
     var id: String { name }
 }
 
@@ -100,10 +103,10 @@ func rowsPerPage(_ family: WidgetFamily) -> Int { family == .systemLarge ? 8 : 8
 func rowData(_ p: Progress, query: String?) -> [RowData] {
     if let c = p.course(matching: query) {
         return c.lectures.filter { $0.topics > 0 }.map {
-            RowData(name: $0.name, topics: $0.topics, due: $0.due, new: $0.new, learning: $0.learning, known: $0.known) }
+            RowData(name: $0.name, topics: $0.topics, due: $0.due, new: $0.new, learning: $0.learning, known: $0.known, rep: $0.repeat ?? 0) }
     }
     return p.courses.filter { $0.topics > 0 }.map {
-        RowData(name: $0.course, topics: $0.topics, due: $0.due, new: $0.new, learning: $0.learning, known: $0.known) }
+        RowData(name: $0.course, topics: $0.topics, due: $0.due, new: $0.new, learning: $0.learning, known: $0.known, rep: $0.repeat ?? 0) }
 }
 
 // MARK: - Timeline
@@ -146,25 +149,30 @@ extension Color {
         })
     }
     static let known = adaptive(light: 0x16a34a, dark: 0x22c55e)
-    static let learning = adaptive(light: 0x2563eb, dark: 0x3b82f6)
-    static let new = adaptive(light: 0xdc2626, dark: 0xef4444)
+    static let learning = adaptive(light: 0x2563eb, dark: 0x3b82f6)   // ok, good
+    static let relearn = adaptive(light: 0xdc2626, dark: 0xef4444)    // repeat
+    static let new = adaptive(light: 0x9ca3af, dark: 0x6b7280)        // not studied yet
+    static let due = adaptive(light: 0xdc2626, dark: 0xef4444)        // text: something is due
     static let track = adaptive(light: 0xe5e7eb, dark: 0x2c313a)
 }
 
 struct Donut: View {
-    let new: Int, learning: Int, known: Int
+    let new: Int, learning: Int, known: Int, rep: Int   // learning includes rep (red); the blue ring is the rest
     var line: CGFloat
 
     var body: some View {
         let n = Double(new + learning + known)
+        let blue = Double(max(0, learning - rep))
         let a = n > 0 ? Double(known) / n : 0
-        let b = n > 0 ? Double(known + learning) / n : 0
+        let b = n > 0 ? (Double(known) + blue) / n : 0
+        let c = n > 0 ? Double(known + learning) / n : 0
         ZStack {
             Circle().stroke(Color.track, lineWidth: line)
             if n > 0 {
                 ring(0, a, .known)
                 ring(a, b, .learning)
-                ring(b, 1, .new)
+                ring(b, c, .relearn)
+                ring(c, 1, .new)
             }
         }
         .padding(line / 2)
@@ -185,17 +193,17 @@ struct Row: View {
 
     var body: some View {
         HStack(spacing: 6) {
-            Donut(new: r.new, learning: r.learning, known: r.known, line: big ? 4.5 : 3)
+            Donut(new: r.new, learning: r.learning, known: r.known, rep: r.rep, line: big ? 4.5 : 3)
                 .frame(width: big ? 28 : 16, height: big ? 28 : 16)
             if big {
                 VStack(alignment: .leading, spacing: 0) {
                     Text(r.name).font(.system(size: 12)).lineLimit(1)
                     Text(r.due > 0 ? "\(r.due) due · \(r.known)/\(r.topics) known" : "\(r.known)/\(r.topics) known")
-                        .font(.system(size: 9)).foregroundStyle(r.due > 0 ? Color.new : .secondary).lineLimit(1)
+                        .font(.system(size: 9)).foregroundStyle(r.due > 0 ? Color.due : .secondary).lineLimit(1)
                 }
             } else {
                 Text(r.name).font(.system(size: 10.5)).lineLimit(1).minimumScaleFactor(0.85)
-                    .foregroundStyle(r.due > 0 ? Color.new : .primary)   // red name = something is due
+                    .foregroundStyle(r.due > 0 ? Color.due : .primary)   // red name = something is due
             }
         }
     }
@@ -233,11 +241,11 @@ struct WidgetView: View {
     @ViewBuilder private func content(_ p: Progress) -> some View {
         let course = p.course(matching: entry.query)
         if let q = entry.query, !q.trimmingCharacters(in: .whitespaces).isEmpty, course == nil {
-            Text("No course matches \"\(q)\"").font(.caption).foregroundStyle(Color.new)
+            Text("No course matches \"\(q)\"").font(.caption).foregroundStyle(Color.due)
         } else {
             let title = course?.course ?? "Study progress"
             let due = course?.due ?? p.due
-            let counts = course.map { ($0.new, $0.learning, $0.known) } ?? (p.new, p.learning, p.known)
+            let counts = course.map { ($0.new, $0.learning, $0.known, $0.repeat ?? 0) } ?? (p.new, p.learning, p.known, p.repeat ?? 0)
             let total = counts.0 + counts.1 + counts.2
             let all = rowData(p, query: entry.query)
             let cap = rowsPerPage(family)
@@ -250,21 +258,21 @@ struct WidgetView: View {
                     Text(title).font(.system(size: family == .systemLarge ? 15 : 13, weight: .semibold)).lineLimit(1)
                     Spacer()
                     Text(due > 0 ? "\(due) due" : "all caught up").font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(due > 0 ? Color.new : .known)
+                        .foregroundStyle(due > 0 ? Color.due : .known)
                 }
                 if family == .systemSmall {
-                    Donut(new: counts.0, learning: counts.1, known: counts.2, line: 9)
+                    Donut(new: counts.0, learning: counts.1, known: counts.2, rep: counts.3, line: 9)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    Text("\(counts.2) known · \(counts.1) learning · \(counts.0) new")
-                        .font(.system(size: 9)).foregroundStyle(.secondary).lineLimit(1)
+                    Text("\(counts.2) known · \(counts.1 - counts.3) ok · \(counts.3) repeat · \(counts.0) new")
+                        .font(.system(size: 9)).foregroundStyle(.secondary).lineLimit(1).minimumScaleFactor(0.8)
                 } else {
                     HStack(alignment: .top, spacing: 16) {
                         VStack(alignment: .leading, spacing: 4) {
-                            Donut(new: counts.0, learning: counts.1, known: counts.2, line: family == .systemLarge ? 14 : 11)
+                            Donut(new: counts.0, learning: counts.1, known: counts.2, rep: counts.3, line: family == .systemLarge ? 14 : 11)
                                 .frame(width: family == .systemLarge ? 110 : 52, height: family == .systemLarge ? 110 : 52)
                             Text(course == nil ? "All courses" : "All lectures").font(.system(size: 11, weight: .semibold))
                             Text("\(due) due · \(counts.2)/\(total)").font(.system(size: 9))
-                                .foregroundStyle(due > 0 ? Color.new : .secondary).lineLimit(1)
+                                .foregroundStyle(due > 0 ? Color.due : .secondary).lineLimit(1)
                         }
                         if family == .systemLarge {
                             VStack(alignment: .leading, spacing: 8) {
@@ -310,7 +318,7 @@ struct UnitutorWidget: Widget {
             WidgetView(entry: entry).containerBackground(.fill.tertiary, for: .widget)
         }
         .configurationDisplayName("Study progress")
-        .description("Donut charts of your topics: known, learning, new. Set a course to see its lectures.")
+        .description("Donut charts of your topics: new (grey), repeat (red), ok/good (blue), strong/solid (green). Set a course to see its lectures.")
         .supportedFamilies([.systemSmall, .systemMedium, .systemLarge])
     }
 }
