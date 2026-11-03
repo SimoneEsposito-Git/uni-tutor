@@ -11,8 +11,14 @@ Manual course sync (Moodle) with a change summary, then new lecture topics go in
    - Add one line to `.tutor/index.md`: `` - `md/<file>`: Lecture N – <title> (<main topics>) ``. N = the number printed on the slides, else the chronological lecture order.
    - Split the content into topics: each one examinable unit (concept, model, algorithm, theorem, trade-off), usually 5-15 per lecture, short noun-phrase names, in slide order. No organisational slides. If the course has a book in `.tutor/md/book/` (the lecture names its chapter on an early slide), add the matching section as `(Book ch. X.Y)` to each topic's Source, using `md/book/_index.md`; the `Lecture N, slides` part stays first. Do not duplicate topics already in `progress.md` (a changed lecture only adds topics that are missing).
    - Append them: pipe lines `Topic | Lecture N, slides a–b (Book ch. X.Y)` into `python3 .unitutor/progress.py add "<course>"` (stdin, one per line). Status is set to `new`; never edit other rows.
+   - Slide web apps (config `slides_pdf`, e.g. MLE): the PDF lands in `lectures/` as `Lecture N slides.pdf` and goes through this step like any lecture. A changed PDF at the same link (e.g. "preliminary" slides replaced by polished ones) counts as a changed lecture.
+5b. Code assignments (config `unzip_into`, e.g. MLE). Step 2 lists them as `A<k>-<name>/ (unzipped)`; a `<name>.new/` entry means the course re-uploaded an assignment that already exists. Say so, leave both folders as they are, and let the user merge. Per new assignment:
+   - Read only the copies in `.tutor/md/A<k>-<name>/` (README + task prompts), never files inside the assignment folder (`AGENTS.md` rule). Count the ❓ boxes per task prompt.
+   - Index line: `` - `md/A<k>-<name>/`: Assignment k – <title> (Tasks A–G: <main topics>; ❓ answers in worksheet.py, checked by `make submit` + py.ml.tu-berlin.de) ``.
+   - Concept topics, as in step 5, from the task-prompt text (what it teaches, not the tooling steps). Source `Lecture L, A<k> Task X`, where L is the lecture of the same week in the `MLE-Assignments/README.md` table (A<k> pairs with Lecture k+1), so they group with that lecture. Skip concepts already in `progress.md` from the slides.
+   - Exercise rows: one per task that has ❓ questions: `<task title> (Sheet k Ex X) | Sheet k Ex X (A<k>)`, plus "(optional)" in the title for tasks the README marks as Extra/optional.
 6. Reply with a compact summary:
-   - Table: Course | New/changed file | Folder | Markdown ready (yes/no) | Topics added
+   - Table: Course | New/changed file | Folder | Markdown ready (yes/no) | Topics added (unzipped assignments: folder, topics + exercise rows added)
    - Todoist: N new tasks
    - Courses with no changes, in one line.
 7. If no course changed and nothing was pending, say "No changes" plus the Todoist count. Suggest `/repeat` only if topics were added.

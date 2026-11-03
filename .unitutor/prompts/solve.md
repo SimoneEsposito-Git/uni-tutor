@@ -4,6 +4,12 @@ Terms: sheet = the whole exercise sheet, exercise = an Exercise inside it, task 
 
 Arguments: `<sheet> [tasks]`, e.g. `sheet 2`, `sheet 2 1a 3`, `2 ex1b 2` (a bare exercise number = all its tasks). Course: from context, else ask.
 
+## Code assignments (course with `unzip_into` in config, e.g. MLE; argument `A0`, `a0`, `assignment 0`)
+No worksheet PDF, no LaTeX, no tablet: the work happens in the assignment repo (`exercises/<unzip_into>/A<k>-<name>/`), with the course's own assistant in a session opened there, and the course website checks `submission.json`. The rules in `AGENTS.md` ("Code assignments") apply. Instead of Cases A–C:
+1. Task text from `.tutor/md/A<k>-<name>/` only. Exercise rows `Sheet k Ex X` (one per task with ❓ questions); add missing ones as in "Sheet rows".
+2. Report in one line per task which ❓ answers in `worksheet.py` are still `None` (read only `worksheet.py`, never write it). Ask for the website result (the user pastes which answers it marked correct) before grading. Never run `make submit`, `submit.py`, `git` or the scripts.
+3. Tutor on open or wrong ❓ questions under the rules below. Unitutor's rules, not the course's "two guesses, then the answer": never state the answer. Grade each task's row by the ladder once its ❓ answers are settled: correct on the website on the first try without help = `pass`; corrected after one hint = `partial`; several attempts or hint 3 = `fail`. Answers worked out with the course's own assistant still count as own work; ask how many tries it took.
+
 ## Paths
 - Course folder: `*/<course>/` (contains `.tutor/`). Work dir: `<course>/generated/solve/<slug>/`, slug = `sheet02` (zero-padded sheet number).
 - Tools: `.unitutor/solve/solve_build.py` (build), `.unitutor/solve/preamble.tex` (template). Do not edit `exercises/`, `lectures/`, `info/`. `solutions/` is read-only except that `solve_build.py` saves `<slug>_my_solutions.pdf` there on every build (the user's own current solution; it is not an official solution).

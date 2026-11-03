@@ -29,3 +29,8 @@ courses:
   - id: 12346
     name: "Deep Learning"
     semester: "Semester 1"
+    # Optionale Felder pro Kurs:
+    # lecture_pattern: '(?:^|\s)\d{2}_\d{2}_\d{2}_'  # Regex für Vorlesungsdateien ohne "lecture"/"slides" im Namen
+    # skip_folders: "literature"              # Regex auf Moodle-Ordnernamen, die nicht synchronisiert werden
+    # unzip_into: "MLE-Assignments"           # Abgabe-Zips nach exercises/<Ordner>/ entpacken (bestehende Aufgabenordner nie überschreiben)
+    # slides_pdf: "presentation.pdf"          # Vorlesungslinks auf eine Folien-Web-App: PDF-Pfad relativ zur verlinkten Seite

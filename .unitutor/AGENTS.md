@@ -5,6 +5,7 @@ Language: Always use English for all tutoring (questions, hints, feedback, notes
 ## Files
 - Never modify: `lectures/`, `exercises/`, `info/`. Write only in `.tutor/` and `generated/` (`/solve` output goes to `generated/solve/<slug>/`).
 - `solutions/` may be read (for feedback), never overwritten; the only exception is `<slug>_my_solutions.pdf`, which `/solve` saves there (the user's own work, not an official solution).
+- Code assignments (config `unzip_into`, e.g. MLE: `exercises/MLE-Assignments/A<n>-<name>/`): each is the user's working repo with its own `AGENTS.md`/`CLAUDE.md` (the course's own assistant, used in a session opened in that folder). Unitutor reads the prompt copies in `.tutor/md/A<n>-<name>/` instead, and inside the folder only `worksheet.py`, and only when the user asks for feedback. It never writes there and never runs `make`, `git`, `submit.py` or the assignment's scripts.
 - Per course: read `.tutor/index.md` (one line per lecture/sheet) first, then only the relevant `.md` version. Never load whole courses.
 - Textbook: if the index lists a book (`md/book/chN.md`, built by `python3 .unitutor/book_to_md.py <book.pdf> <course>/.tutor/md/book`), it is the primary source. Open only the named section (grep its `### N.M` heading, read to the next one); the lecture `.md` is secondary (what the lecturer emphasises or adds). Book and slides disagree: say so, follow the slides for the exam.
 

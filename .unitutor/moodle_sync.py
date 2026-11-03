@@ -6,7 +6,7 @@ Session cookies are cached in session.json; a fresh login only happens when they
   python moodle_sync.py --login   # visible browser, for the first run or if login fails headless
   python moodle_sync.py           # daily run (headless)
 """
-import hashlib, json, re, shutil, subprocess, sys
+import hashlib, json, re, shutil, subprocess, sys, zipfile
 from pathlib import Path
 from urllib.parse import unquote, urljoin
 
@@ -75,13 +75,17 @@ def login(page, interactive: bool):
         page.wait_for_url(on_moodle_page, timeout=timeout)
 
 
+def course_cfg(course_dir: Path) -> dict:
+    return next((c for c in CFG["courses"] if c["name"] == course_dir.name), {})
+
+
 def filename_of(resp, url: str) -> str:
     cd = resp.headers.get("content-disposition", "")
     m = re.search(r"filename\*?=(?:UTF-8'')?\"?([^\";]+)", cd)
     return safe_name(unquote(m.group(1)) if m else unquote(url.split("?")[0].rsplit("/", 1)[-1]))
 
 
-def fetch(ctx, url: str, course_dir: Path, section: str, label: str, new: list):
+def fetch(ctx, url: str, course_dir: Path, section: str, label: str, new: list, fname: str = ""):
     resp = ctx.request.get(url)
     if not resp.ok or "text/html" in resp.headers.get("content-type", ""):
         return  # page without a file (e.g. URL, label)
@@ -89,7 +93,7 @@ def fetch(ctx, url: str, course_dir: Path, section: str, label: str, new: list):
     digest = hashlib.sha256(body).hexdigest()
     if STATE.get(url) == digest:
         return
-    fname = filename_of(resp, url)
+    fname = fname or filename_of(resp, url)
     dest = target_dir(course_dir, section, label, "", fname) / fname
     dest.parent.mkdir(parents=True, exist_ok=True)
     if dest.exists():
@@ -102,6 +106,55 @@ def fetch(ctx, url: str, course_dir: Path, section: str, label: str, new: list):
         ipynb_to_markdown(dest, course_dir / ".tutor")
     STATE[url] = digest
     new.append(dest.name)
+    if dest.suffix.lower() == ".zip" and (into := course_cfg(course_dir).get("unzip_into")):
+        new += [f"{a}/ (unzipped)" for a in unzip_assignments(dest, course_dir, into)]
+
+
+def unzip_assignments(zf: Path, course_dir: Path, into: str) -> list:
+    """Unpack an assignment zip into exercises/<into>/ (config `unzip_into`, e.g. MLE). Works for a zip of the
+    whole <into>/ folder and for one assignment per zip. An existing assignment folder holds the user's work and is
+    never overwritten: a re-uploaded assignment goes to <name>.new/. Returns the assignment folders written."""
+    base = course_dir / "exercises" / into
+    with zipfile.ZipFile(zf) as z:
+        names = [n for n in z.namelist() if not n.startswith("__MACOSX/") and not n.endswith(".DS_Store")]
+        tops = {n.split("/", 1)[0] for n in names}
+        strip = into + "/" if tops == {into} else ""          # zip of the whole wrapper folder
+        if not strip and not (len(tops) == 1 and all("/" in n for n in names)):
+            strip, base = "", base / zf.stem                  # loose files: folder named after the zip
+        existed = {p.name for p in base.iterdir()} if base.exists() else set()
+        written = set()
+        for n in names:
+            rel = n[len(strip):] if strip else n
+            if not rel:
+                continue
+            top, _, rest = rel.partition("/")
+            if re.match(r"A\d+", top) and top in existed:
+                top += ".new"
+            out = (base / top / rest) if rest or rel.endswith("/") else base / top
+            if not out.resolve().is_relative_to(base.resolve()):
+                continue                                      # zip slip
+            if n.endswith("/"):
+                out.mkdir(parents=True, exist_ok=True)
+                continue
+            out.parent.mkdir(parents=True, exist_ok=True)
+            out.write_bytes(z.read(n))
+            if mode := (z.getinfo(n).external_attr >> 16) & 0o777:
+                out.chmod(mode | 0o600)
+            if re.match(r"A\d+", top):
+                written.add(top)
+    for a in sorted(written):
+        mirror_assignment(base / a, course_dir / ".tutor")
+    return sorted(written)
+
+
+def mirror_assignment(adir: Path, tutor_dir: Path):
+    """Copy README and task prompts to .tutor/md/<assignment>/, so the tutor never reads inside the assignment
+    folder (its CLAUDE.md/AGENTS.md would load the course's own assistant persona)."""
+    out = tutor_dir / "md" / adir.name.removesuffix(".new")
+    out.mkdir(parents=True, exist_ok=True)
+    for f in [adir / "README.md", *sorted((adir / "task_prompts").glob("*.md"))]:
+        if f.exists():
+            shutil.copyfile(f, out / f.name)
 
 
 def ipynb_to_markdown(nb: Path, tutor_dir: Path):
@@ -191,6 +244,10 @@ def follow_url(page, ctx, href: str, course_dir: Path, section: str, label: str,
             resp = ctx.request.get(urljoin(resp.url, m.group(1).strip()))
         if resp.ok and 'href="_sources/' in resp.text():
             fetch_jupyter_book(ctx, resp.url, course_dir, section, label, new)
+        elif (pdf := course_cfg(course_dir).get("slides_pdf")) and re.search(r"lecture|slides", label, re.I):
+            # slide web apps (e.g. MLE) whose "Download PDF" button serves a fixed path; name it after the Moodle link
+            name = safe_name(re.split(r"\s*[:\u2013-]\s*", label.strip(), maxsplit=1)[0]) + " slides.pdf"
+            fetch(ctx, urljoin(resp.url, pdf), course_dir, section, label, new, fname=name)
 
 
 def sync_course(page, ctx, c):
