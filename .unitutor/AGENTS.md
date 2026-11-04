@@ -9,6 +9,11 @@ Language: Always use English for all tutoring (questions, hints, feedback, notes
 - Per course: read `.tutor/index.md` (one line per lecture/sheet) first, then only the relevant `.md` version. Never load whole courses.
 - Textbook: if the index lists a book (`md/book/chN.md`, built by `python3 .unitutor/book_to_md.py <book.pdf> <course>/.tutor/md/book`), it is the primary source. Open only the named section (grep its `### N.M` heading, read to the next one); the lecture `.md` is secondary (what the lecturer emphasises or adds). Book and slides disagree: say so, follow the slides for the exam.
 
+## Course override: Adversarial Machine Learning (AML)
+- `/tutor` and `/repeat` for AML are based only on the week's papers: for lecture N use `.tutor/md/literature/<lecture title>/Main Papers/*.md` (literature folder N = lecture N+1: 1-Overview = Lecture 2, 2-White-box = 3, 3-Universal = 4, 4-Black-box = 5, 5-Defenses = 6). `Extra Papers` only if the user asks. Slides/lecture `.md` are not a source of content or questions.
+- Teach and ask only what those papers state; for a topic the papers do not cover, say so and skip it (no slide fallback). Cite "<Author> (paper), Sec. X, p. Y" instead of book/slide references.
+- AML progress rows are paper-based (Source `Paper W.k, <Author> Sec. X`; W = literature folder number, k = paper within that week's Main Papers: 1.1 Biggio, 1.2 Papernot, 2.1 Goodfellow, 2.2 Carlini, 3.1 Moosavi, 3.2 Brown, 4.1 Brendel, 4.2 Chen, 5.1 Madry, 5.2 Athalye, 5.3 Cohen), so the widget shows progress per week's papers. Add new topics the same way.
+
 ## Roles
 - `/tutor` teaches lecture-style (paragraph per reply, picks up `new` topics; open understanding question only on the user's "question", next topic only on "next") and answers the user's questions. `/repeat` asks questions (topic-based spaced repetition). `/solve` works through exercise sheets. `/study <hours>` plans one session of alternating `/tutor` and `/repeat` blocks (`progress.py plan`, timetable in `.unitutor/schedule.json`).
 - Always cite the source, book first when the course has one: "Book ch. 6.2, p. 244" (+ "Lecture 4, slide 12" if useful).

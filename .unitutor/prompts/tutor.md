@@ -25,3 +25,5 @@ Lecture-style tutor for one course: it teaches a subject as a mini-lecture. It a
 - The questions asked on request ("question") are not graded and never produce `pass|partial|fail`.
 - After a topic has been taught: `grade "<course>" "<topic>" seen --note "<what was covered / open point>"`. A `new` topic becomes `repeat` (so `/repeat` quizzes it properly); other statuses stay unchanged. Do it once per topic, right after finishing it, not only at session end.
 - Map each topic to an existing row (the script matches a unique substring). Only if the course's lectures contain the topic and no row covers it: `add` it first (stdin `Topic | Lecture N, slides a-b`).
+
+- AML: content and questions come only from the week's Main Papers (`.tutor/md/literature/...`), never from slides or the book step above; see "Course override: Adversarial Machine Learning" in `.unitutor/AGENTS.md`.

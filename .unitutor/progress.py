@@ -25,7 +25,7 @@ SCHEDULE = HERE / "schedule.json"  # weekly timetable per course folder, see sch
 TUTOR_MIN, REVIEW_MIN = 8, 4  # estimated minutes per taught topic / per review question
 TUTOR_BLOCK, REVIEW_BLOCK = 30, 20  # minutes per block; blocks alternate so one session mixes both
 TIMING = HERE / "timing.log"  # TSV: iso time, kind (start|end|tutor|review), course, topic, result (seen|pass|partial|fail); personal, gitignored
-BREAK_MIN, MIN_COURSE, MIN_ALL = 25, 8, 10  # gaps above BREAK_MIN are breaks; samples needed for per-course / overall medians
+BREAK_MIN, MIN_COURSE, PRIOR_N = 25, 6, 3  # gaps above BREAK_MIN are breaks; samples needed for a per-course median; weight (in samples) of the default when blending
 GATE = {4: 3, 5: 4}  # plan category -> higher-priority category that must be empty before it is used
 DAYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
 LOCAL_WIDGET_DIR = Path.home() / "Library/Application Support/Unitutor"  # not TCC-protected: read by the Übersicht desktop widget
@@ -56,6 +56,16 @@ def read_rows(course_dir: Path) -> list:
             continue
         rows.append(dict(zip(["topic", "source", "status", "seen", "due", "notes"], cells[:5] + [" | ".join(cells[5:])])))
     return rows
+
+
+def tracked_rows(course_dir: Path) -> list:
+    """read_rows minus `Paper W.k` rows of weeks not yet lectured (paper week W belongs to Lecture W+1; hidden until that lecture exists)."""
+    rows = read_rows(course_dir)
+    if not any(r["source"].lower().startswith("paper") for r in rows):
+        return rows
+    last = max(lecture_dates(course_dir, {}), default=0)
+    paper_lecture = lambda r: int(m[1]) + 1 if (m := re.match(r"\s*Paper\s+(\d+)\.", r["source"], re.I)) else 0
+    return [r for r in rows if paper_lecture(r) <= last]
 
 
 def write_rows(course_dir: Path, rows: list):
@@ -119,7 +129,7 @@ def cmd_queue(a):
     cs = {find_course(a.course).name: find_course(a.course)} if a.course else courses()
     due, new, upcoming = [], [], []
     for name, course in cs.items():
-        rows = [dict(r, course=name) for r in read_rows(course)]
+        rows = [dict(r, course=name) for r in tracked_rows(course)]
         d = sorted((r for r in rows if r["status"] in TIERS and date(r["due"]) and date(r["due"]) <= TODAY),
                    key=lambda r: r["due"])
         due.append(d)
@@ -225,14 +235,17 @@ def cmd_plan(a):
         cfg = sched.get(name, {})
         dates = lecture_dates(course, cfg)
         seen_dates[name] = dates
-        for r in read_rows(course):
+        for r in tracked_rows(course):
             m = re.search(r"Lecture\s+(\d+)", r["source"])
             n = int(m[1]) if m else None
+            pm = re.match(r"\s*Paper\s+(\d+)\.", r["source"], re.I)  # Paper W.k = k-th paper of literature week W = Lecture W+1
+            if pm:
+                n = int(pm[1]) + 1
             d = dates.get(n)
             prev = d is None or d < week
             tut = tutorial_after(cfg, d) if d else None
             item = dict(r, course=name, lecture=n, ldate=d, tutorial=tut)
-            if r["status"] == "new" and r["source"].lower().startswith("lecture"):
+            if r["status"] == "new" and r["source"].lower().startswith(("lecture", "paper")):
                 soon = tut and now < tut <= now + dt.timedelta(hours=24)
                 q[0 if soon else 1 if prev else 2 if tut and tut > now else 4].append(item)
             elif r["status"] in TIERS and date(r["due"]) and date(r["due"]) <= today:
@@ -276,7 +289,7 @@ def cmd_plan(a):
             stalls += 1
     total = sum(len(b[1]) for b in blocks)
     print(f"Session {a.hours:g} h, now {now:%a %Y-%m-%d %H:%M}; {len(blocks)} blocks, {total} items "
-          + (f"(minutes from your timing log, {n_obs} samples; defaults {TUTOR_MIN}/{REVIEW_MIN} min until enough)" if n_obs
+          + (f"(minutes blended from your timing log, {n_obs} samples, with defaults {TUTOR_MIN}/{REVIEW_MIN} min as prior)" if n_obs
              else f"(est. {TUTOR_MIN} min/topic taught, {REVIEW_MIN} min/review; timing log still empty)"))
     why = {0: "tutorial within 24 h", 1: "lecture from a previous week", 2: "lecture before its tutorial", 3: "review, previous-week lecture",
            4: "lecture from this week", 5: "review, this week"}
@@ -322,14 +335,18 @@ def durations() -> list:
 
 
 def estimator():
-    """(est(course, kind, default) -> minutes, number of samples): per-course median once enough samples, else overall median, else default."""
+    """(est(course, kind, default) -> minutes, number of samples): median of the logged durations, blended with the default
+    (weight PRIOR_N samples) so a few observations already shift it; per-course median once MIN_COURSE samples, else overall."""
     d = durations()
 
     def est(course, kind, default):
         own = [m for c, k, m in d if k == kind and c == course]
         every = [m for c, k, m in d if k == kind]
-        pool = own if len(own) >= MIN_COURSE else every if len(every) >= MIN_ALL else None
-        return statistics.median(pool) if pool else default
+        pool = own if len(own) >= MIN_COURSE else every
+        if not pool:
+            return default
+        n = len(pool)
+        return (n * statistics.median(pool) + PRIOR_N * default) / (n + PRIOR_N)
     return est, len(d)
 
 
@@ -385,13 +402,13 @@ def cmd_grade(a):
 
 def order_key(source: str) -> tuple:
     """(kind, lecture/sheet number, first slide) so topics follow the course order, lectures first."""
-    kind = next((i for i, k in enumerate(("lecture", "book", "sheet")) if source.lower().startswith(k)), 3)
+    kind = next((i for i, k in enumerate(("lecture", "book", "sheet")) if source.lower().startswith(k)), 0 if source.lower().startswith("paper") else 3)
     nums = [float(n) for n in re.findall(r"\d+(?:\.\d+)?", source)[:2]]
     return (kind, *nums, *[1e9] * (2 - len(nums)))
 
 
 def lecture_of(source: str) -> str:
-    m = re.match(r"\s*((?:Lecture|Sheet|Book ch\.?)\s*[\d.]+)", source, re.I)
+    m = re.match(r"\s*((?:Lecture|Sheet|Paper|Book ch\.?)\s*[\d.]+)", source, re.I)
     return m.group(1) if m else "Other"
 
 
@@ -428,7 +445,7 @@ def render_overview(semester: Path) -> list:
     for name, d in courses().items():
         if d.parent != semester:
             continue
-        rows = read_rows(d)
+        rows = tracked_rows(d)
         c, n = count(rows), len(rows)
         due = sum(1 for r in rows if r["status"] in TIERS and date(r["due"]) and date(r["due"]) <= TODAY)
         due_all += due
