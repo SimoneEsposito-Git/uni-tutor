@@ -25,6 +25,7 @@ SCHEDULE = HERE / "schedule.json"  # weekly timetable per course folder, see sch
 TUTOR_MIN, REVIEW_MIN = 8, 4  # estimated minutes per taught topic / per review question
 TUTOR_BLOCK, REVIEW_BLOCK = 30, 20  # minutes per block; blocks alternate so one session mixes both
 TIMING = HERE / "timing.log"  # TSV: iso time, kind (start|end|tutor|review), course, topic, result (seen|pass|partial|fail); personal, gitignored
+OUTLIER_SD, OUTLIER_MIN = 2, 5  # durations further than OUTLIER_SD std from the per-kind mean are ignored once OUTLIER_MIN samples exist
 BREAK_MIN, MIN_COURSE, PRIOR_N = 25, 6, 3  # gaps above BREAK_MIN are breaks; samples needed for a per-course median; weight (in samples) of the default when blending
 GATE = {4: 3, 5: 4}  # plan category -> higher-priority category that must be empty before it is used
 DAYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
@@ -331,7 +332,19 @@ def durations() -> list:
         gap = (cur[0] - prev[0]).total_seconds() / 60
         if cur[1] in ("tutor", "review") and prev[1] != "end" and 0.3 <= gap <= BREAK_MIN:
             out.append((cur[2], cur[1], gap))
-    return out
+    return drop_outliers(out)
+
+
+def drop_outliers(d: list) -> list:
+    """Per kind (tutor/review), drop durations more than OUTLIER_SD standard deviations from the mean (e.g. AFK gaps); needs OUTLIER_MIN samples."""
+    keep = []
+    for kind in ("tutor", "review"):
+        part = [x for x in d if x[1] == kind]
+        if len(part) >= OUTLIER_MIN:
+            mu, sd = statistics.mean(x[2] for x in part), statistics.pstdev(x[2] for x in part)
+            part = [x for x in part if abs(x[2] - mu) <= OUTLIER_SD * sd]
+        keep += part
+    return keep
 
 
 def estimator():

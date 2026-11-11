@@ -37,7 +37,7 @@ struct Course: Identifiable {
 }
 
 enum Scanner {
-    static let folders = ["lectures", "exercises", "solutions", "info", "generated"]
+    static let folders = ["lectures", "literature", "exercises", "solutions", "info", "generated"]
     static let exts: Set<String> = ["pdf", "mp4", "mov", "m4v"]
 
     static func scan(_ root: URL) -> [Course] {
@@ -55,6 +55,7 @@ enum Scanner {
                     var items: [Item] = []
                     for case let url as URL in en where exts.contains(url.pathExtension.lowercased()) {
                         let rel = url.path.replacingOccurrences(of: base.path + "/", with: "")
+                        if rel.hasPrefix("_temp/") { continue }
                         items.append(Item(url: url, title: (rel as NSString).deletingPathExtension))
                     }
                     items.sort { $0.title.localizedStandardCompare($1.title) == .orderedAscending }

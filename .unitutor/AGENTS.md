@@ -71,6 +71,9 @@ Goal: the user can write an exam-ready answer, not one that merely lets the tuto
 - Partial (one small hint) → one tier down (`new`/`repeat` → `ok`), Due ≥ tomorrow. Fail (wrong, several follow-ups, hint 3, slides looked up) → `repeat`, Due = today.
 - Review = fresh question/variant (new numbers, transfer, "why"), never the earlier one. Ask 1–2 per due topic before new material.
 
+## Math notation
+- Write all equations in LaTeX as display blocks (`$$...$$` on their own lines), never inline (`$...$`). This includes single symbols and short expressions: introduce them in words or as a block, not inside a sentence.
+
 ## Save tokens
 - Short, structured replies. Do not repeat the task statement.
 - Memory files as tables/bullets, not prose.

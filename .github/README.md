@@ -258,3 +258,60 @@ Lass dir neue Aufgaben im exakten Stil deiner echten Übungsblätter erstellen:
   *(Schwierigkeitsgrade: `easy`, `medium`, `exam`)*
 - Beim ersten Aufruf analysiert die KI alle bisherigen Blätter in `exercises/` und erstellt einmalig `.tutor/style_guide.md`.
 - Die neuen Aufgaben landen in `generated/<datum>_<thema>_<stufe>.md` und die Musterlösungen getrennt in `generated/<datum>_<thema>_<stufe>_solutions.md` (ohne sie im Chat zu spoilern).
+
+---
+
+## 6. Optional: Fortschritts-Widget
+
+`progress.py` schreibt bei jedem Fortschritt eine `progress.json` (Lernstand pro Kurs). Daraus zeigen Widgets Donut-Diagramme (grün = sitzt, blau = in Arbeit, rot = neu). Es gibt drei Varianten, alle in `.unitutor/widget/`; eine reicht:
+
+| Variante | Plattform | Quelle | Datenpfad |
+|---|---|---|---|
+| macOS-Widget (WidgetKit) | macOS 14+ | `widget/mac/` | `~/Library/Application Support/Unitutor/progress.json` |
+| Übersicht-Widget | macOS | `widget/unitutor.widget/` | dieselbe Datei |
+| Scriptable-Widget | iPhone/iPad | `widget/progress-widget.js`, `progress-widget-loader.js` | iCloud Drive, Ordner `Unitutor` |
+
+Die Datei entsteht nach dem ersten Lernfortschritt (z. B. nach `/sync` oder `/repeat`). Mit `PY .unitutor/progress.py overview` kannst du sie sofort erzeugen lassen.
+
+### macOS-Widget (WidgetKit)
+Benötigt Xcode (aus dem App Store) und [XcodeGen](https://github.com/yonaskolb/XcodeGen).
+```bash
+brew install xcodegen
+cd .unitutor/widget/mac
+xcodegen generate
+open Unitutor.xcodeproj
+```
+1. In Xcode bei beiden Targets (`Unitutor` und `UnitutorWidget`) unter *Signing & Capabilities* dein **Team** wählen (oder `DEVELOPMENT_TEAM` in `project.yml` eintragen und erneut `xcodegen generate` ausführen).
+2. **Release-Build nach `~/Applications` installieren.** Das Widget muss aus dort laufen, nicht aus Xcodes DerivedData-Ordner, sonst verliert macOS die Registrierung und das Widget bleibt auf einem alten Stand stehen:
+   ```bash
+   cd .unitutor/widget/mac
+   xcodebuild -scheme Unitutor -configuration Release -derivedDataPath build
+   mkdir -p ~/Applications
+   ditto build/Build/Products/Release/Unitutor.app ~/Applications/Unitutor.app
+   open ~/Applications/Unitutor.app
+   ```
+3. Rechtsklick auf den Desktop (oder Benachrichtigungszentrale) → *Widgets bearbeiten* → **Unitutor** hinzufügen.
+
+`progress.py` stößt nach jedem Fortschritt automatisch ein Neuladen an, sobald `~/Applications/Unitutor.app` existiert; ohne Push aktualisiert sich das Widget alle ca. 15 Minuten.
+
+**Widget zeigt alte Daten?** Prüfe, ob die Erweiterung registriert ist, und registriere sie sonst neu:
+```bash
+pluginkit -mAvvv -i com.unitutor.progress.widget
+/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f -R ~/Applications/Unitutor.app
+pluginkit -a ~/Applications/Unitutor.app/Contents/PlugIns/UnitutorWidget.appex
+open -g ~/Applications/Unitutor.app
+killall chronod
+```
+
+### Übersicht-Widget (ohne Xcode)
+1. [Übersicht](https://tracesof.net/uebersicht/) installieren.
+2. Den Ordner `.unitutor/widget/unitutor.widget` in den Widget-Ordner von Übersicht kopieren (*Menüleiste → Open Widgets Folder*).
+3. Optional in `index.jsx` die Konstante `COURSE` auf einen Kursnamen oder dessen Initialen setzen (leer = alle Kurse). Für ein Widget pro Kurs den Ordner duplizieren und `COURSE` sowie die Position anpassen.
+
+### Scriptable-Widget (iPhone/iPad)
+Setzt iCloud Drive auf dem Mac voraus: `progress.py` legt dann automatisch den Ordner `Unitutor` mit der `progress.json` an.
+1. **Scriptable** aus dem App Store installieren.
+2. `progress-widget.js` in den iCloud-Ordner `Unitutor` kopieren (Dateien-App → iCloud Drive → Unitutor).
+3. In Scriptable: *Settings → File Bookmarks* → den iCloud-Ordner `Unitutor` unter dem Namen `Unitutor` hinzufügen.
+4. Neues Script anlegen und den Inhalt von `progress-widget-loader.js` einfügen. Spätere Updates von `progress-widget.js` brauchen so kein erneutes Kopieren.
+5. Scriptable-Widget auf den Home-Bildschirm legen und das Script wählen. Ohne *Parameter* werden alle Kurse gezeigt; mit Kursname oder Initialen (z. B. `dl`) nur dieser Kurs.
